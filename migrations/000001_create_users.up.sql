@@ -6,4 +6,4 @@ CREATE TABLE users (
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT now()
 );
 
-CREATE INDEX idx_users_user_id ON users(id);
+CREATE INDEX idx_users_user_id ON users(id); 
