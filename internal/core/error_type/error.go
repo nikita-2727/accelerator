@@ -23,6 +23,15 @@ func NewBadRequest(msg string) *HTTPError {
 	}
 }
 
+// не уточняем для клиента, почему конкретно произошла ошибка, чтобы не допускать уязвимостей
+// по типу пользователь с такой почтой еще не зарегистрирован и т п
+func NewUnauthorized(msg string) *HTTPError {
+	return &HTTPError{
+		Code:    http.StatusUnauthorized,
+		Message: msg,
+	}
+}
+
 func NewConflict(msg string) *HTTPError {
 	return &HTTPError{
 		Code:    http.StatusConflict,
