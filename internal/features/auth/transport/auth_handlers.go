@@ -47,7 +47,9 @@ func (trans *AuthTransport) RegisterHandle(w http.ResponseWriter, r *http.Reques
 	}
 	// валидируем полученный json по тегам
 	if err := trans.validate.Struct(newRequest); err != nil {
-		tools.WriteError(w, error_type.NewBadRequest("Логин или пароль не соответствуют требованиям"))
+		// получаем варианты ошибок исходя от ошибки в поле, пароль или email
+		messageError := tools.GetMessageFromValidateError(err)
+		tools.WriteError(w, error_type.NewBadRequest(messageError))
 		return
 	}
 	// если все окей, отправляем запрос в сервис для регистрации
@@ -83,7 +85,7 @@ func (trans *AuthTransport) LoginHandle(w http.ResponseWriter, r *http.Request) 
 	}
 	// валидируем полученный json по тегам
 	if err := trans.validate.Struct(newRequest); err != nil {
-		tools.WriteError(w, error_type.NewBadRequest("Логин или пароль не соответствуют требованиям"))
+		tools.WriteError(w, error_type.NewBadRequest("Ошибка валидации"))
 		return
 	}
 	// если все окей, отправляем запрос в сервис для входа и получения токенов
@@ -102,7 +104,7 @@ func (trans *AuthTransport) LoginHandle(w http.ResponseWriter, r *http.Request) 
 	}
 
 	// записываем ответ с токенами пользователю
-	tools.WriteJSON(w, http.StatusCreated, newResponse)
+	tools.WriteJSON(w, http.StatusOK, newResponse)
 }
 
 
@@ -122,7 +124,7 @@ func (trans *AuthTransport) RefreshHandle(w http.ResponseWriter, r *http.Request
 	}
 	// валидируем полученный json по тегам
 	if err := trans.validate.Struct(newRequest); err != nil {
-		tools.WriteError(w, error_type.NewBadRequest("Логин или пароль не соответствуют требованиям"))
+		tools.WriteError(w, error_type.NewBadRequest("Отсутствует токен авторизации"))
 		return
 	}
 	// если все окей, отправляем запрос в сервис для входа и получения токенов
@@ -141,5 +143,5 @@ func (trans *AuthTransport) RefreshHandle(w http.ResponseWriter, r *http.Request
 	}
 
 	// записываем ответ с токенами пользователю
-	tools.WriteJSON(w, http.StatusCreated, newResponse)
+	tools.WriteJSON(w, http.StatusOK, newResponse)
 }

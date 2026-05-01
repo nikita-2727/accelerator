@@ -121,7 +121,14 @@ func (serv *AuthService) LoginUserService(ctx context.Context, email, password s
 	refreshTokenHash := tools.GenerateTokenHash(tokensInfo.RefreshToken)
 
 	// 5) создаем сессию пользователя
-	err = serv.repo.CreateSession(ctx, refreshTokenHash, userAuthInfo.ID, tokensInfo.RefreshJTI, tokensInfo.CreateTime, tokensInfo.RefreshExpireTime)
+	err = serv.repo.CreateSession(
+		ctx, 
+		userAuthInfo.ID, 
+		refreshTokenHash, 
+		tokensInfo.RefreshJTI, 
+		tokensInfo.CreateTime, 
+		tokensInfo.RefreshExpireTime,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -200,7 +207,15 @@ func (serv *AuthService) RefreshUserService(ctx context.Context, refreshToken st
 
 
 	// 8) создаем новую сессию с новым рефреш токеном
-	err = serv.repo.CreateSessionTx(ctx, tx, sessionInfo.UserID, refreshTokenHash, tokensInfo.RefreshJTI, tokensInfo.CreateTime, tokensInfo.RefreshExpireTime)
+	err = serv.repo.CreateSessionTx(
+		ctx, 
+		tx, 
+		sessionInfo.UserID, 
+		refreshTokenHash, 
+		tokensInfo.RefreshJTI, 
+		tokensInfo.CreateTime, 
+		tokensInfo.RefreshExpireTime,
+	)
 	if err != nil {
 		return nil, err
 	}
