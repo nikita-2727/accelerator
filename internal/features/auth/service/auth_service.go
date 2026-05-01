@@ -8,6 +8,8 @@ import (
 	"accelerator/internal/tools"
 	"context"
 	"fmt"
+
+	"github.com/jackc/pgx/v5"
 )
 
 type AuthService struct {
@@ -34,10 +36,16 @@ func (serv *AuthService) RegisterUserService(
 	// остальные ошибки из сторонных файлов обрабатываются уже здесь
 
 	// нужно реализовать механизм транзакции, чтобы не было сценария, когда на одном из этапов произошла ошибка, а данные в бд уже изменены
-	// и например у нас получается зарегистированный пользователь без сессии, которому потом надо логиниться чтобы получить токены 
-	
+	// и например у нас получается зарегистированный пользователь без сессии, которому потом надо логиниться чтобы получить токены
+	tx, err := serv.repo.BeginTx(ctx, pgx.TxOptions{}) // создаем транзакцию
+	if err != nil {
+		return nil, error_type.NewInternal(fmt.Errorf("begin tx: %w", err))
+	}
+	defer func() { // при какой либо ошибке перед завершением функции откатываем изменения базы данных
+		_ = tx.Rollback(ctx)
+	}()
 
-
+	// ----------------------> ОСНОВНАЯ ЛОГИКА <---------------------------
 	// получаем хэш пароля
 	password_hash, err := tools.GenerateHash(password) // оборачиваем в errorf чтобы сохранить доп информацию для логов в ошибке также сохраняем возможность проверить ее тип через Is
 	if err != nil {
@@ -66,6 +74,13 @@ func (serv *AuthService) RegisterUserService(
 	err = serv.repo.CreateSession(ctx, refreshTokenHash, tokensInfo.CreateTime, tokensInfo.RefreshExpireTime)
 	if err != nil {
 		return nil, err
+	}
+	// -------------------------------------------------------
+
+	// коммитим изменения, если мы не вышли на предыдущем моменте,
+	// также обрабатываем саму ошибку при неудачном коммите
+	if err := tx.Commit(ctx); err != nil {
+		return nil, error_type.NewInternal(fmt.Errorf("commit tx: %w", err))
 	}
 
 	// получаем нужную информацию из модели создания токена и возвращаем токены на клиент
