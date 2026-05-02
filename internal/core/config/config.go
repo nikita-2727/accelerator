@@ -13,6 +13,7 @@ type Config struct {
 	AccessTime       time.Duration
 	RefreshTime      time.Duration
 	DBDSN            string
+	SizeLimitAudioMB int
 }
 
 func LoadConfig() *Config {
@@ -23,6 +24,7 @@ func LoadConfig() *Config {
 		AccessTime:       getEnvDuration("ACCESS_TIME_MINUTE", 15) * time.Minute,
 		RefreshTime:      getEnvDuration("REFRESH_TIME_HOURS", 7*24) * time.Hour,
 		DBDSN:            getEnvString("DB_DSN", "postgres://postgres:1423qewr@localhost:5432/accelerator"),
+		SizeLimitAudioMB: getEnvInt("SIZE_LIMIT_AUDIO_MB", 1024),
 	}
 
 }
@@ -30,6 +32,17 @@ func LoadConfig() *Config {
 func getEnvString(key, default_value string) string {
 	if value := os.Getenv(key); value != "" {
 		return value
+	}
+	return default_value
+}
+
+func getEnvInt(key string, default_value int) int {
+	if value := os.Getenv(key); value != "" {
+		valueInt, err := strconv.Atoi(value)
+		if err != nil {
+			panic("Недопустимый максимальный размер аудио в .env")
+		}
+		return valueInt
 	}
 	return default_value
 }

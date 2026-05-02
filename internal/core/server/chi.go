@@ -1,14 +1,16 @@
 package server
 
 import (
-	"accelerator/internal/features/auth/transport"
+	authTransport "accelerator/internal/features/auth/transport"
+	tasksTransport "accelerator/internal/features/tasks/transport"
+	"errors"
 	"net/http"
 
 	"github.com/go-chi/chi/middleware"
 	"github.com/go-chi/chi/v5"
 )
 
-func NewChiServer(trans *transport.AuthTransport, port string) {
+func StartNewChiServer(authTrans *authTransport.AuthTransport, tasksTrans *tasksTransport.TasksTransport, port string) error {
 	router := chi.NewRouter() // используем chi, он легковесный , в нем есть встроенные обработчики переменных в паттерне и нормальный роутинг
 
 	router.Use(middleware.RequestID) // генерирует для каждого запроса уникальный ID
@@ -17,11 +19,19 @@ func NewChiServer(trans *transport.AuthTransport, port string) {
 
 	// создаем группу api с префиксом
 	router.Route("/api/v1", func(router chi.Router) {
-		router.Post("/register", trans.RegisterHandle)
-		router.Post("/login", trans.LoginHandle)
-		router.Post("/refresh", trans.RefreshHandle)
+		router.Post("/register", authTrans.RegisterHandle)
+		router.Post("/login", authTrans.LoginHandle)
+		router.Post("/refresh", authTrans.RefreshHandle)
+
+		router.Post("/upload", tasksTrans.UploadHandle)
 	})
 
-	http.ListenAndServe(port, router)
+	err := http.ListenAndServe(port, router)
+
+	if errors.Is(err, http.ErrServerClosed) { // если ошибка при нормальном завершении сервера. то все ок
+		return nil
+	} else {
+		return err
+	}
 	
 }

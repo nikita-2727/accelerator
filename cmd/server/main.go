@@ -4,22 +4,36 @@ import (
 	"accelerator/internal/core/config"
 	"accelerator/internal/core/logger"
 	"accelerator/internal/core/server"
-	"accelerator/internal/features/auth/repository"
-	"accelerator/internal/features/auth/service"
-	"accelerator/internal/features/auth/transport"
+	 authRepository "accelerator/internal/features/auth/repository"
+	 tasksRepository "accelerator/internal/features/tasks/repository"
+
+	 authService "accelerator/internal/features/auth/service"
+	 tasksService"accelerator/internal/features/tasks/service"
+
+	 authTransport "accelerator/internal/features/auth/transport"
+	 tasksTransport "accelerator/internal/features/tasks/transport"
 	"context"
-	"log"
+	"log/slog"
 
 	"github.com/go-playground/validator/v10"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+/*
+-------------- ЗАВИСИМОСТИ --------------
+1 -- GO          1.26.2
+2 -- PostgresSQL
+2 -- MAKE        4.4.1
+3 -- Migrate     4.19.1
+4 -- FFMPEG      8.1
+*/
+
+
+
+
 // что можно добавить в будущем для безопасности?
-// 1) идентификацию сессий через jti, чтобы определять одну сессию пользователя от другой без поиска по хешу токена
-//впринципе есть id токенов, если что, можно искать сессии по ним, не проблема
 // 2) хранение в сессии еще и fingerprint, чтобы привязывать сессию к определенному устройству чтобы обрабатывать подозрения на угон аккаунта
-// 3) хранить специальный флаг removed_at. а не просто удалять сессии при неправильном рефреш токене, чтобы понять когда токен угнали и пытались с ним войти и снести все сессии
 
 
 func main() {
@@ -30,12 +44,21 @@ func main() {
 	pool, err := pgxpool.New(context.Background(), cfg.DBDSN) // создаем пул соединений
 	defer func() { pool.Close() }() // перед завершением работы закрываем соединение с базой данных
 	if err != nil {
-		log.Fatal("Не удалось создать пул соединений с базой данных:", err)
+		slog.Error("Не удалось создать пул соединений с базой данных:", "err", err)
 	}
 
-	authRepo := repository.NewAuthRepo(pool)          // возвращает указатель на репозиторий с указателем на подключение к базе данных и соответсвенно методы работы с бд
-	authServ := service.NewAuthService(authRepo, cfg) // передаем методы работы с бд в бизнес логику, возвращает методы работы бизнес логики
-	authTrans := transport.NewAuthTransport(authServ, validate)
+	authRepo := authRepository.NewAuthRepo(pool)          // возвращает указатель на репозиторий с указателем на подключение к базе данных и соответсвенно методы работы с бд
+	authServ := authService.NewAuthService(authRepo, cfg) // передаем методы работы с бд в бизнес логику, возвращает методы работы бизнес логики
+	authTrans := authTransport.NewAuthTransport(authServ, validate) // передаем нашу методы из бизнес логики и созданный валидатор
 
-	server.NewChiServer(authTrans, cfg.ServerPort)
+	TasksRepo := tasksRepository.NewTasksRepo(pool)          
+	TasksServ := tasksService.NewTasksService(TasksRepo, cfg)
+	TasksTrans := tasksTransport.NewTasksTransport(TasksServ, validate, cfg)
+
+
+	if err := server.StartNewChiServer(authTrans, TasksTrans, cfg.ServerPort); err != nil {
+		slog.Error("Ошибка при работе HTTP сервера:", "err", err)
+	} else {
+		slog.Info("Сервер завершился успешно")
+	}
 }
