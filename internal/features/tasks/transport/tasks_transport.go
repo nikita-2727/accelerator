@@ -6,6 +6,8 @@ import (
 	"accelerator/internal/features/tasks/service"
 	"accelerator/internal/tools"
 	"bytes"
+	"encoding/json"
+
 	// "encoding/json"
 	"fmt"
 	"io"
@@ -60,22 +62,13 @@ func (trans *TasksTransport) UploadHandle(w http.ResponseWriter, r *http.Request
 	// максимальный размер обрабатываемого аудио из конфига, преобразуем в байты
 	maxFileSize := int64(trans.cfg.SizeLimitAudioMB) * 1024 * 1024
 	// Ограничиваем общий размер запроса (файл + 10 МБ на служебные поля)
-	r.Body = http.MaxBytesReader(w, r.Body, (maxFileSize)*1024*1024)
+	r.Body = http.MaxBytesReader(w, r.Body, maxFileSize + 10 * 1024 * 1024)
 
-	// ----------------------------------------------> ВАЛИДАЦИЯ JSON <------------------------------------------------
-	// newRequest := RequestUploadDTO{}
-	// if err := json.NewDecoder(r.Body).Decode(&newRequest); err != nil {
-	// 	tools.WriteError(w, error_type.NewBadRequest("Не удалось распарсить JSON"))
-	// 	return
-	// }
-	// // валидируем полученный json по тегам
-	// if err := trans.validate.Struct(newRequest); err != nil {
-	// 	tools.WriteError(w, error_type.NewBadRequest("Не хвататает данных в запросе"))
-	// 	return
-	// }
 
-	// ----------------------------------> ПОЛУЧЕНИЕ НАЗВАНИЯ И ВАЛИДАЦИЯ АУДИО <----------------------------------------
-
+	// -----------------------------> ПАРСИМ MULTIPART DATA, ВАЛИДИРУЕМ АУДИО И JSON <----------------------------------------
+	// ПРИ ЗАПРОСЕ ОБЯЗАТЕЛЬНО СНАЧАЛА DATA ПОТОМ AUDIO
+	// https://chat.deepseek.com/share/roav1gjcsw30tm7pkw <<--------  объяснение, я уже ничего не соображаю
+	
 	// создаем stream-парсер запроса
 	// это позволит читать части по мере их поступления от клиента
 	reader, err := r.MultipartReader()
@@ -84,8 +77,12 @@ func (trans *TasksTransport) UploadHandle(w http.ResponseWriter, r *http.Request
 		return
 	}
 
+	var newRequest RequestUploadDTO
 	var originalFilename string
 	var filePart *multipart.Part
+	// флаги для досрочного выхода и чтобы кинуть ошибку, если одной из частей не буджет в запросе
+	jsonFound := false
+    fileFound := false
 	// ищем часть с нужным именем поля для аудио
 	for {
 		part, err := reader.NextPart()
@@ -100,24 +97,45 @@ func (trans *TasksTransport) UploadHandle(w http.ResponseWriter, r *http.Request
 				))
 				return
 			}
-
 			// другая ошибка чтения
 			tools.WriteError(w, error_type.NewBadRequest("Ошибка при чтении файла"))
 			return
 		}
-		// когда нашли нужное поле, получаем полное название и сам part
-		if part.FormName() == "audio" {
-			filePart = part
+		
+		// ищем данные по ключам, которые указали при запросе
+		if part.FormName() == "audio" { // когда нашли нужное поле, получаем полное название и сам part
+			filePart = part // !!!!!!!!!!!!!!!!!!!!!!!!!!
 			originalFilename = part.FileName() // !!!!!!!!!!!!!!!!!!!!!!!!!!
+			fileFound = true
+		}
+		if part.FormName() == "data" { // нашли json, валидируем его
+			buf, err := io.ReadAll(part)
+            if err != nil {
+                tools.WriteError(w, error_type.NewBadRequest("Ошибка чтения JSON"))
+                return
+            }
+            if err := json.Unmarshal(buf, &newRequest); err != nil {
+                tools.WriteError(w, error_type.NewBadRequest("Неверный формат JSON"))
+                return
+            }
+            if err := trans.validate.Struct(newRequest); err != nil {
+                tools.WriteError(w, error_type.NewBadRequest("Ошибка валидации JSON"))
+                return
+            }
+            jsonFound = true
+		}
+
+		// если все нашли раньше окончания цикла, выходим досрочно
+		if jsonFound && fileFound {
 			break
 		}
 	}
 
-	// если в audio ничего не было, значит пользователь не загрузил аудио файл
-	if filePart == nil {
-		tools.WriteError(w, error_type.NewBadRequest("Аудио файл не найден"))
-		return
-	}
+	// пользователь не загрузил аудио файл или не передал json
+	 if !jsonFound || !fileFound {
+        tools.WriteError(w, error_type.NewBadRequest("Отсутствует data или audio"))
+        return
+    }
 	defer filePart.Close() // закрываем после завершения работы, чтобы изежать утечки данных
 
 	// ---------------------------------------> ОСНОВНАЯ ВАЛИДАЦИЯ АУДИО <-----------------------------------------------
@@ -153,7 +171,7 @@ func (trans *TasksTransport) UploadHandle(w http.ResponseWriter, r *http.Request
 	// --------------------------------------> ПОЛУЧАЕМ ДЛИТЕЛЬНОСТЬ АУДИО <---------------------------------------------
 	// получаем длительность файла не скачивая его на диск напрямую из пришедшего потока в зависимости от формата
 	var duration int // !!!!!!!!!!!!!!!!!!!!!!!!!!
-	switch fileType {  
+	switch fileType {
 	case "audio/mpeg":
 		duration, err = tools.GetDurationFromMP3(fullFileStream)
 	case "audio/x-wav":
@@ -169,7 +187,7 @@ func (trans *TasksTransport) UploadHandle(w http.ResponseWriter, r *http.Request
 		return
 	}
 	if err != nil {
-		tools.WriteError(w, error_type.NewBadRequest("Ошибка при анализе аудиофайла"))
+		error_type.NewInternal(fmt.Errorf("Ошибка при определении длительности файла: %w", err))
 		return
 	}
 
@@ -194,6 +212,7 @@ func (trans *TasksTransport) UploadHandle(w http.ResponseWriter, r *http.Request
 		WaitSeconds: 0,
 		CreatedAt:   time.Now(),
 	}
+	fmt.Println(newRequest)
 
 	tools.WriteJSON(w, http.StatusCreated, newResponse)
 }

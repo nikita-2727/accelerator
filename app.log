@@ -1,0 +1,9 @@
+{"time":"2026-05-02T20:27:46.9016213+03:00","level":"ERROR","msg":"sending HTTP error","status":400,"client_message":"Отсутствует data или audio","internal_error":null}
+{"time":"2026-05-02T20:28:02.8698111+03:00","level":"ERROR","msg":"sending HTTP error","status":400,"client_message":"Ошибка валидации JSON","internal_error":null}
+{"time":"2026-05-02T20:31:54.2287611+03:00","level":"ERROR","msg":"sending HTTP error","status":400,"client_message":"Ошибка при чтении сигнатуры файла","internal_error":null}
+{"time":"2026-05-02T20:33:33.9894039+03:00","level":"ERROR","msg":"sending HTTP error","status":400,"client_message":"Ошибка при чтении сигнатуры файла","internal_error":null}
+{"time":"2026-05-02T20:40:26.1870151+03:00","level":"ERROR","msg":"sending HTTP error","status":400,"client_message":"Ошибка при чтении сигнатуры файла","internal_error":null}
+{"time":"2026-05-02T20:40:35.2864706+03:00","level":"ERROR","msg":"sending HTTP error","status":400,"client_message":"Ошибка при чтении сигнатуры файла","internal_error":null}
+{"time":"2026-05-02T20:40:55.9393485+03:00","level":"ERROR","msg":"sending HTTP error","status":400,"client_message":"Неверный формат JSON","internal_error":null}
+{"time":"2026-05-02T20:41:05.5183528+03:00","level":"ERROR","msg":"sending HTTP error","status":400,"client_message":"Отсутствует data или audio","internal_error":null}
+{"time":"2026-05-02T20:41:19.176623+03:00","level":"ERROR","msg":"sending HTTP error","status":400,"client_message":"Ошибка при чтении сигнатуры файла","internal_error":null}
