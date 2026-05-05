@@ -1,0 +1,2 @@
+{"time":"2026-05-05T17:04:45.394698007Z","level":"INFO","msg":"fgnfjgjfgjfjgnngjfnfg"}
+{"time":"2026-05-05T17:05:06.661954851Z","level":"ERROR","msg":"sending HTTP error","status":409,"client_message":"A user with such an email already exists","internal_error":null}

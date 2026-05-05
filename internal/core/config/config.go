@@ -23,7 +23,7 @@ func LoadConfig() *Config {
 		JWTRefreshSecret: getEnvString("JWT_REFRESH_SECRET", "qWgbTHLYOmi8gtipk2ESGdcYdb2BMI3XV0k3KGfZAFW"),
 		AccessTime:       getEnvDuration("ACCESS_TIME_MINUTE", 15) * time.Minute,
 		RefreshTime:      getEnvDuration("REFRESH_TIME_HOURS", 7*24) * time.Hour,
-		DBDSN:            getEnvString("DB_DSN", "postgres://postgres:1423qewr@localhost:5432/accelerator"),
+		DBDSN:            getEnvString("DB_DSN", "postgres://nikita:1423qewr@postgres:5432/accelerator"),
 		SizeLimitAudioMB: getEnvInt("SIZE_LIMIT_AUDIO_MB", 1024),
 	}
 

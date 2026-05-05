@@ -20,14 +20,6 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-/*
--------------- ЗАВИСИМОСТИ --------------
-1 -- GO          1.26.2
-2 -- PostgresSQL
-2 -- MAKE        4.4.1
-3 -- Migrate     4.19.1
-4 -- FFMPEG      8.1
-*/
 
 
 

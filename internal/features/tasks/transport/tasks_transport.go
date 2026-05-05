@@ -212,7 +212,6 @@ func (trans *TasksTransport) UploadHandle(w http.ResponseWriter, r *http.Request
 		WaitSeconds: 0,
 		CreatedAt:   time.Now(),
 	}
-	fmt.Println(newRequest)
 
 	tools.WriteJSON(w, http.StatusCreated, newResponse)
 }
