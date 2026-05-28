@@ -279,7 +279,6 @@ func (trans *TasksTransport) UploadHandle(w http.ResponseWriter, r *http.Request
 		trans.processUpload(
 			callerID,
 			taskID,
-			groupID,
 			objectKey,
 			fileType,
 			written,
@@ -309,12 +308,12 @@ func (trans *TasksTransport) UploadHandle(w http.ResponseWriter, r *http.Request
 
 // вспомогательная функция для асинхронной обработки
 func (trans *TasksTransport) processUpload(
-	callerID, taskID, groupID, objectKey, fileType string,
+	callerID, taskID, objectKey, fileType string,
 	fileSize int64,
 	tmpFile *os.File,
 ) {
 	// Собственный контекст с таймаутом (например, 30 минут на загрузку)
-	ctx, cancel := context.WithTimeout(context.Background(), trans.cfg.LimitUploadAudio)
+	ctx, cancel := context.WithTimeout(context.Background(), trans.cfg.LimitUploadAudioMinutes)
 	defer cancel()
 
 	// удаляем и закрываем файл при завершении горутины

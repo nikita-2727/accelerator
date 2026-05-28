@@ -101,7 +101,7 @@ func (o *Orchestrator) runStageWorker(ctx context.Context, stage config.StageCon
 			outputKey := stage.OutputKeyFunc(task.GroupID, task.TaskID)
 
 			// генерируем ссылки длительностью максимального timeout, чтобы успели воркеры записать и ссылки не закончили действие
-			inputURL, err := o.minio.GetPresignedGetURL(ctx, inputKey, o.cfg.AIWorkersTimeoutHour)
+			inputURL, err := o.minio.GetPresignedGetLocalURL(ctx, inputKey, o.cfg.AIWorkersTimeoutHour)
 			if err != nil {
 				// ставим у задачи статус ошибки и переходим на следующую итерацию цикла
 				if err := o.tasksRepo.UpdateTaskStatus(ctx, task.TaskID, stage.StatusError); err != nil {
@@ -135,7 +135,7 @@ func (o *Orchestrator) runStageWorker(ctx context.Context, stage config.StageCon
 			if stage.StatusProcessing == string(domains.StatusProcessingTranscribe) {
 				// генерируем ссылку длительностью максимального timeout, чтобы успели воркеры записать и ссылки не закончили действие
 				// на деноизинг аудио, чттобы транскрибация нормально работала
-				denoiseURL, err := o.minio.GetPresignedGetURL(ctx, config.DenoisedKey(task.GroupID, task.TaskID), o.cfg.AIWorkersTimeoutHour)
+				denoiseURL, err := o.minio.GetPresignedGetLocalURL(ctx, config.DenoisedKey(task.GroupID, task.TaskID), o.cfg.AIWorkersTimeoutHour)
 				if err != nil {
 					// ставим у задачи статус ошибки и переходим на следующую итерацию цикла
 					if err := o.tasksRepo.UpdateTaskStatus(ctx, task.TaskID, stage.StatusError); err != nil {
@@ -231,7 +231,7 @@ func (o *Orchestrator) runStageWorker(ctx context.Context, stage config.StageCon
 			// =============================== ЕСЛИ НОВЫЙ СТАТУС DONE, СБОРКА RESULT_JSON И ДОБАВЛЕНИЕ В БД =======================================
 			if stage.NextStatus == string(domains.StatusDone) {
 				// 1. генерируем ссылку на диаризацию по ключу input
-				diarizeURL, err := o.minio.GetPresignedGetURL(ctx, inputKey, o.cfg.AIWorkersTimeoutHour)
+				diarizeURL, err := o.minio.GetPresignedGetPublicURL(ctx, inputKey, o.cfg.AIWorkersTimeoutHour, o.cfg.PresignedPublicHostName)
 				if err != nil {
 					// ставим у задачи статус ошибки и переходим на следующую итерацию цикла
 					if err := o.tasksRepo.UpdateTaskStatus(ctx, task.TaskID, stage.StatusError); err != nil {
@@ -241,7 +241,7 @@ func (o *Orchestrator) runStageWorker(ctx context.Context, stage config.StageCon
 					return
 				}
 				// 2. генерируем ссылку на саммари по ключу output
-				summaryURL, err := o.minio.GetPresignedGetURL(ctx, outputKey, o.cfg.AIWorkersTimeoutHour)
+				summaryURL, err := o.minio.GetPresignedGetPublicURL(ctx, outputKey, o.cfg.AIWorkersTimeoutHour, o.cfg.PresignedPublicHostName)
 				if err != nil {
 					// ставим у задачи статус ошибки и переходим на следующую итерацию цикла
 					if err := o.tasksRepo.UpdateTaskStatus(ctx, task.TaskID, stage.StatusError); err != nil {

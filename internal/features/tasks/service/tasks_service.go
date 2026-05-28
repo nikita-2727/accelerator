@@ -86,14 +86,19 @@ func (serv *TasksService) GetAudioTaskHandle(ctx context.Context, callerID, task
 	if !exists {
 		return "", time.Time{}, error_type.NewNotFound("Задача не найдена")
 	}
+	
+	// проверяем статус задачи (можно получить только если pending_denoise и выше)
+	if taskInfo.Status == string(domains.StatusProcessingUpload) {
+		return "", time.Time{}, error_type.NewNotFound("аудио еще не загружено")
+	}
 
 	// генерируем ссылку на файл
-	audioURL, err := serv.minio.GetPresignedGetURL(ctx, taskInfo.FilePath, serv.cfg.LimitAudioURLMinuts)
+	audioURL, err := serv.minio.GetPresignedGetPublicURL(ctx, taskInfo.FilePath, serv.cfg.LimitAudioURLMinuts, serv.cfg.PresignedPublicHostName)
 	if err != nil {
 		// ставим у задачи статус ошибки и переходим на следующую итерацию цикла
 		return "", time.Time{}, error_type.NewInternal(fmt.Errorf("generate URL audio: %w", err))
 	}
-
+    // вычисляем, когда истечет ссылка
 	expiresAt := time.Now().Add(serv.cfg.LimitAudioURLMinuts)
 
 	return audioURL, expiresAt, nil
