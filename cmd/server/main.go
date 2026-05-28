@@ -12,6 +12,9 @@ import (
 	"accelerator/internal/tools"
 	"accelerator/internal/worker"
 	"fmt"
+	"os"
+	"os/signal"
+	"syscall"
 
 	adminService "accelerator/internal/features/admin/service"
 	authService "accelerator/internal/features/auth/service"
@@ -50,7 +53,6 @@ import (
 
 // сделать удаление записей с s3 при удалении задачи
 */
-
 
 func main() {
 	cfg := config.LoadConfig() // загружаем .env и все его значения
@@ -101,7 +103,6 @@ func main() {
 	uploadChanWorkers := make(chan struct{}, cfg.MaxUploadWorkers)
 	tasksTrans := tasksTransport.NewTasksTransport(tasksServ, minioClient, uploadChanWorkers, validate, cfg)
 
-
 	// ОСНОВНАЯ ЛОГИКА ОБРАБОТКИ
 
 	// загружаем конфиг этапов обработки
@@ -121,16 +122,24 @@ func main() {
 	)
 	// создаем экземпляр конфига для основного воркера
 	orchestrator := worker.NewOrchestrator(
-		tasksRepo, minioClient, cfg, resourceManager, stageConfig, 
+		tasksRepo, minioClient, cfg, resourceManager, stageConfig,
 	)
 
 	// запускаем основной цикл обработки для всех статусов и передаем контекст
 	orchestrator.Run(pipelineContext)
-
 
 	if err := server.StartNewChiServer(adminTrans, authTrans, patternsTrans, tasksTrans, cfg); err != nil {
 		slog.Error("Ошибка при работе HTTP сервера:", "err", err)
 	} else {
 		slog.Info("Сервер завершился успешно")
 	}
+
+	// Создаем канал для прослушивания сигналов от операционной системы (Docker)
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
+
+	// Программа "зависнет" на этой строке и будет работать, пока не получит сигнал выключения
+	<-quit
+	slog.Info("Получен сигнал выключения, сервер останавливается...")
+
 }

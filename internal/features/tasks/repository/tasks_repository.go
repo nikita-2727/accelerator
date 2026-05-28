@@ -271,20 +271,20 @@ func (r *TasksRepo) ClaimNextTask(ctx context.Context, statusPending, statusProc
 
 func (repo *TasksRepo) CreateTask(
 	ctx context.Context,
-	userID, groupID,
+	taskID, userID, groupID,
 	taskName, taskDescription, meetingDate, patternID,
 	fileName, filePath, statusTask string,
 ) (*domains.Task, error) {
 	sqlQuery := `
-	INSERT INTO tasks (user_id, group_id, task_name, description, meeting_date, pattern_id, file_path, file_name, status)
-	VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+	INSERT INTO tasks (id, user_id, group_id, task_name, description, meeting_date, pattern_id, file_path, file_name, status)
+	VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 	RETURNING id, group_id, task_name, description, meeting_date::text, pattern_id, file_name, status, created_at
 	`
 	var task domains.Task
 
 	err := repo.pool.QueryRow(
 		ctx, sqlQuery,
-		userID, groupID, taskName, taskDescription, meetingDate, patternID, filePath, fileName, statusTask,
+		taskID, userID, groupID, taskName, taskDescription, meetingDate, patternID, filePath, fileName, statusTask,
 	).Scan(
 		&task.TaskID,
 		&task.GroupID,

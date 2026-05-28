@@ -81,11 +81,139 @@ services:
       - accelerator-network
 
 
+  denoise-worker:
+    build:
+      context: ./ai/denoise   # путь к папке с Dockerfile и кодом
+      dockerfile: Dockerfile
+    container_name: denoise-worker
+    environment: # пробрасываем, чтобы получить потом в докере при запуске через unicorn
+      DENOISE_PORT: "${DENOISE_PORT}"
+    volumes: # один раз загружаем модель и сохраняем в valume, чтобы не загружать несколько раз заново
+    - denoise_models:/app/models
+    ports:
+      - "${DENOISE_PORT}:${DENOISE_PORT}"   # для отладки, в продакшене не обязательно
+    # Важно: поддержка GPU
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+    restart: unless-stopped
+    depends_on:
+      app:
+        condition: service_started
+    networks:
+      - accelerator-network
+
+  diarize-worker:
+    build:
+      context: ./ai/diarize
+      dockerfile: Dockerfile
+    container_name: diarize-worker
+    environment:
+      HF_TOKEN: ${DIARIZE_HF_TOKEN} # токен Hugging Face из .env
+      HF_HOME: "/app/models/huggingface" # кеш моделей
+      DIARIZE_PORT: "${DIARIZE_PORT}"
+    volumes:
+      - diarize_models:/app/models # том для сохранения моделей
+    ports:
+      - "${DIARIZE_PORT}:${DIARIZE_PORT}"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    restart: unless-stopped
+    depends_on:
+      app:
+        condition: service_started
+    networks:
+      - accelerator-network
+
+
+  asr-worker:
+    build:
+      context: ./ai/transcribe
+      dockerfile: Dockerfile
+    container_name: asr-worker
+    environment:
+      HF_HOME: "/app/models/huggingface"
+      MODELSCOPE_CACHE: "/app/models/modelscope"
+      TRANSCRIBE_PORT: "${TRANSCRIBE_PORT}"
+    volumes:
+      - asr_models:/app/models
+    ports:
+      - "${TRANSCRIBE_PORT}:${TRANSCRIBE_PORT}"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    restart: unless-stopped
+    depends_on:
+      app:
+        condition: service_started
+    networks:
+      - accelerator-network
+
+
+  summarize-worker:
+    build:
+      context: ./ai/summarize
+      dockerfile: Dockerfile
+    container_name: summarize-worker
+    environment:
+      LOCAL_MODEL_PATH: "/app/models/qwen-model.gguf" # путь внутри контейнера к локальной модели
+      SUMMARY_PORT: "${SUMMARY_PORT}"
+    volumes:
+      - ./models:/app/models # папка с моделями на хосте
+    ports:
+      - "${SUMMARY_PORT}:${SUMMARY_PORT}"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    restart: unless-stopped
+    depends_on:
+      app:
+        condition: service_started
+    networks:
+      - accelerator-network
+
+  
+
+  # # === НОВЫЙ СЕРВИС ФРОНТЕНДА ===
+  # frontend:
+  #   build:
+  #     context: ../frontend # Поднимаемся на уровень выше и заходим в соседнюю папку frontend
+  #     dockerfile: Dockerfile
+  #   container_name: accelerator-frontend
+  #   ports:
+  #     - "8080:80" # Открываем порт 8080 на сервере Ubuntu и направляем его на 80 порт Nginx
+  #   depends_on:
+  #     app:
+  #       condition: service_started
+  #   networks:
+  #     - accelerator-network
+  #   restart: unless-stopped
+
 
 volumes: # используем именованные тома, а не привязка к конкретной папке
   postgres_data:
   minio_data:
-
+  denoise_models:
+  diarize_models:
+  asr_models:
 
 networks:
   accelerator-network:

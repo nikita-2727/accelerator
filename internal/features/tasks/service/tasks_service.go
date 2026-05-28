@@ -30,7 +30,7 @@ func NewTasksService(repo *repository.TasksRepo, minio *storage.MinIOClient, cfg
 
 func (serv *TasksService) UploadTaskService(
 	ctx context.Context,
-	userID, groupID,
+	taskID, userID, groupID,
 	taskName, taskDescription, meetingDate, patternID,
 	fileName, filePath, statusTask string,
 ) (*domains.Task, error) {
@@ -54,7 +54,8 @@ func (serv *TasksService) UploadTaskService(
 	}
 
 	task, err := serv.repo.CreateTask(
-		ctx, userID, groupID,
+		ctx, 
+		taskID, userID, groupID,
 		taskName, taskDescription, meetingDate, patternID,
 		fileName, filePath, statusTask,
 	)

@@ -260,10 +260,11 @@ func (trans *TasksTransport) UploadHandle(w http.ResponseWriter, r *http.Request
 	taskID := uuid.New().String()
 	// сохраняем objectKey в БД в поле file_path
 	objectKey := config.UploadKey(groupID, taskID)
-
+    
+	// создает задачу с сгенерированным заранее ID
 	taskInfo, err := trans.serv.UploadTaskService(
 		ctx,
-		callerID, groupID,
+		taskID, callerID, groupID,
 		newRequest.TaskName, newRequest.Description, newRequest.MeetingDate, newRequest.PatternID,
 		originalFilename, objectKey, string(domains.StatusProcessingUpload),
 	)
