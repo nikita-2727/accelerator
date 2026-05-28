@@ -17,8 +17,8 @@ RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o main ./cmd/...
 # Используем минимальный образ для запуска
 FROM alpine:latest
 
-# Устанавливаем необходимые сертификаты для HTTPS запросов
-RUN apk --no-cache add ca-certificates
+# Устанавливаем необходимые сертификаты для HTTPS запросов и ffmpeg
+RUN apk --no-cache add ca-certificates ffmpeg
 
 WORKDIR /root/
 

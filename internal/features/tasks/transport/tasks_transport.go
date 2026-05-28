@@ -349,39 +349,27 @@ func (trans *TasksTransport) processUpload(
 	// --------------------------------------> ПОЛУЧАЕМ ДЛИТЕЛЬНОСТЬ АУДИО <---------------------------------------------
 	// Перемотка и определение длительности
 	if _, err := tmpFile.Seek(0, io.SeekStart); err != nil {
-		taskErr = fmt.Errorf("перемотка: %w", err)
-		return
-	}
-
-	switch fileType {
-	case "audio/mpeg":
-		duration, taskErr = tools.GetDurationFromMP3(tmpFile)
-	case "audio/x-wav":
-		duration, taskErr = tools.GetDurationFromWAV(tmpFile)
-	case "audio/ogg":
-		duration, taskErr = tools.GetDurationFromOGG(tmpFile)
-	case "audio/aac":
-		duration, taskErr = tools.GetDurationFromAAC(tmpFile)
-	case "audio/x-flac":
-		duration, taskErr = tools.GetDurationFromFLAC(tmpFile)
-	}
-	if taskErr != nil {
-		taskErr = fmt.Errorf("определение длительности: %w", taskErr)
-		return
-	}
+        taskErr = fmt.Errorf("перемотка перед длительностью: %w", err)
+        return
+    }
+    duration, taskErr = tools.GetAudioDurationSeconds(ctx, tmpFile.Name())
+    if taskErr != nil {
+        taskErr = fmt.Errorf("определение длительности: %w", taskErr)
+        return
+    }
 
 	// --------------------------------------> ЗАГРУЖАЕМ В S3 ХРАНИЛИЩЕ <---------------------------------------------
 	// Перемотка и загрузка в S3
 	if _, err := tmpFile.Seek(0, io.SeekStart); err != nil {
-		taskErr = fmt.Errorf("перемотка перед S3: %w", err)
-		return
-	}
+        taskErr = fmt.Errorf("перемотка перед S3: %w", err)
+        return
+    }
+    _, taskErr = trans.minio.UploadFile(ctx, objectKey, tmpFile, fileSize, fileType)
+    if taskErr != nil {
+        taskErr = fmt.Errorf("загрузка в S3: %w", taskErr)
+        return
+    }
 
-	_, err := trans.minio.UploadFile(ctx, objectKey, tmpFile, fileSize, fileType)
-	if err != nil {
-		taskErr = fmt.Errorf("загрузка в S3: %w", err)
-		return
-	}
 }
 
 // =========================================== ПОЛУЧЕНИЕ СТАТУСА ЗАДАЧИ ==========================================

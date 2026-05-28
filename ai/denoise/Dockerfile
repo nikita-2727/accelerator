@@ -12,12 +12,12 @@ RUN apt-get update && apt-get install -y \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-WORKDIR /workspace
+# Меняем рабочую директорию на ту, что в твоем композе
+WORKDIR /app
 
-# создаем новое вирттуальное окружение
+# создаем новое виртуальное окружение
 RUN python3.12 -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
-# если в композе не передали порт, используем по умолчанию
 ENV DENOISE_PORT=8001 
 
 # Ставим ночную сборку PyTorch под свежую архитектуру GPU
@@ -26,8 +26,11 @@ RUN pip install --pre torch torchvision torchaudio --index-url https://download.
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Скачиваем веса модели прямо в папку /app/models на этапе сборки
+RUN mkdir -p /app/models && \
+    python3.12 -c "from audio_separator.separator import Separator; Separator(model_file_dir='/app/models').download_model_files('model_bs_roformer_ep_317_sdr_12.9755.ckpt')"
+
 COPY . .
 
-# Запуск через uvicorn, открываем порт 8001
-# ставим 0.0.0.0 чтобы слушать все сетевые интрерфейсы, включая мост, через который докер прокидывает порт на локальную машину
+# Запуск через uvicorn
 CMD ["uvicorn", "denoise:app", "--host", "0.0.0.0", "--port", "${DENOISE_PORT}"]

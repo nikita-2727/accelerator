@@ -7,12 +7,14 @@ import sys
 import types
 import soundfile as sf
 import numpy as np
+import gc          # Сборщик мусора Python
+import asyncio     # Для асинхронности
 from datetime import datetime
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from contextlib import asynccontextmanager
 
-# ---------- Патчи для torchaudio (как в исходном скрипте) ----------
+# ---------- Патчи для torchaudio (оставляем как есть) ----------
 if not hasattr(torchaudio, 'set_audio_backend'):
     torchaudio.set_audio_backend = lambda x: None
 if not hasattr(torchaudio, 'get_audio_backend'):
@@ -48,7 +50,7 @@ def direct_soundfile_load(filepath, frame_offset=0, num_frames=-1, *args, **kwar
 torchaudio.load = direct_soundfile_load
 
 class RealAudioMetaData:
-    def __init__(self, num_frames, sample_rate, num_channels):
+    def init(self, num_frames, sample_rate, num_channels):
         self.num_frames = num_frames
         self.sample_rate = sample_rate
         self.num_channels = num_channels
@@ -70,25 +72,12 @@ torchaudio.info = direct_soundfile_info
 # ---------- Импорт pyannote ----------
 from pyannote.audio import Pipeline
 
-# ---------- Глобальная переменная для пайплайна ----------
-diarization_pipeline = None
-
+# ---------- Жизненный цикл ----------
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global diarization_pipeline
-    hf_token = os.environ.get("HF_TOKEN")
-    if not hf_token:
-        raise RuntimeError("Переменная окружения HF_TOKEN не задана!")
-    print("[INFO] Загрузка модели диаризации...")
-    diarization_pipeline = Pipeline.from_pretrained(
-        "pyannote/speaker-diarization-3.1",
-        use_auth_token=hf_token
-    )
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    diarization_pipeline.to(device)
-    print(f"[INFO] Модель диаризации загружена на устройство: {device}")
+    # Убрали загрузку модели отсюда
+    print("[INFO] Сервер диаризации запущен. VRAM свободна. Ожидание запросов от Go-бэкенда...")
     yield
-    # cleanup (опционально)
 
 app = FastAPI(lifespan=lifespan)
 
@@ -96,10 +85,17 @@ class DiarizeRequest(BaseModel):
     input_url: str   # Presigned GET на аудиофайл
     output_url: str  # Presigned PUT для JSON-результата
 
+# ---------- Эндпоинт проверки готовности ----------
+@app.get("/ready")
+async def check_ready():
+    return {"status": "ready"}
+
+# ---------- Логика обработки (с работой в VRAM) ----------
 def run_diarization(input_url: str, output_url: str, task_id: str):
-    # Временные пути
     local_audio = f"/tmp/{task_id}_audio.wav"
     local_json = f"/tmp/{task_id}_diarization.json"
+    
+    diarization_pipeline = None
 
     try:
         # 1. Скачиваем аудио
@@ -109,12 +105,25 @@ def run_diarization(input_url: str, output_url: str, task_id: str):
         with open(local_audio, 'wb') as f:
             for chunk in r.iter_content(chunk_size=8192):
                 f.write(chunk)
-
-        # 2. Диаризация
-        print("[INFO] Запуск диаризации...")
+        # 2. Инициализация модели и ЗАГРУЗКА В VRAM
+        hf_token = os.environ.get("HF_TOKEN")
+        if not hf_token:
+            raise RuntimeError("Переменная окружения HF_TOKEN не задана!")
+        
+        print("[INFO] Загрузка модели диаризации в VRAM...")
+        # Pyannote умный: если веса уже есть в volume HF_HOME, он загрузит их локально.
+        # Если это первый запуск - скачает из интернета и закэширует.
+        diarization_pipeline = Pipeline.from_pretrained(
+            "pyannote/speaker-diarization-3.1",
+            use_auth_token=hf_token
+        )
+        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        diarization_pipeline.to(device)
+        
+        print(f"[INFO] Модель в VRAM на устройстве {device}. Запуск диаризации...")
         diarization = diarization_pipeline(local_audio)
 
-        # 3. Склейка соседних сегментов одного спикера (как в исходном скрипте)
+        # 3. Склейка соседних сегментов одного спикера
         raw_results = []
         for turn, _, speaker in diarization.itertracks(yield_label=True):
             raw_results.append({
@@ -140,13 +149,23 @@ def run_diarization(input_url: str, output_url: str, task_id: str):
         with open(local_json, 'w', encoding='utf-8') as f:
             json.dump(merged_results, f, ensure_ascii=False, indent=2)
 
-        print(f"[INFO] Загрузка результата {output_url}")
+        print(f"[INFO] Загрузка результата по presigned PUT...")
         with open(local_json, 'rb') as fout:
             resp = requests.put(output_url, data=fout)
             resp.raise_for_status()
         print("[SUCCESS] Диаризация завершена успешно")
 
     finally:
+        # ---------- ВЫГРУЗКА ИЗ VRAM И ОЧИСТКА ----------
+        print("[INFO] Выгрузка модели из VRAM...")
+        if diarization_pipeline is not None:
+            del diarization_pipeline
+            gc.collect()
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+            print("[INFO] VRAM успешно освобождена.")
+
+        # Удаление временных файлов
         for f in [local_audio, local_json]:
             if os.path.exists(f):
                 os.remove(f)
@@ -155,7 +174,8 @@ def run_diarization(input_url: str, output_url: str, task_id: str):
 async def diarize(request: DiarizeRequest):
     task_id = str(uuid.uuid4())[:8]
     try:
-        run_diarization(request.input_url, request.output_url, task_id)
+        # Запускаем в отдельном потоке, чтобы не блокировать FastAPI
+        await asyncio.to_thread(run_diarization, request.input_url, request.output_url, task_id)
         return {"status": "ok"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

@@ -51,23 +51,46 @@ services:
     build: . # берем образ из докер файла
     container_name: accelerator-go   
     environment: # так как мы не кидаем туда .env, нам нужно предоставить доступ к переменным из него
+      # === Config.ServerPort ===
       SERVER_PORT: "${SERVER_PORT}"
-      DB_DSN: "${DB_DSN}"
-      JWT_ACCESS_SECRET: "${JWT_ACCESS_SECRET}"
-      JWT_REFRESH_SECRET: "${JWT_REFRESH_SECRET}"
-      ACCESS_TIME_MINUTE: "${ACCESS_TIME_MINUTE}"
-      REFRESH_TIME_HOURS: "${REFRESH_TIME_HOURS}"
 
-      SIZE_LIMIT_AUDIO_MB: "${SIZE_LIMIT_AUDIO_MB}"
-      GENERATE_PASSWORD_LENGTH: "${GENERATE_PASSWORD_LENGTH}"
-      LIMIT_UPLOAD_AUDIO_MINUTE: "${LIMIT_UPLOAD_AUDIO_MINUTE}"
-      MAX_UPLOAD_WORKERS: "${MAX_UPLOAD_WORKERS}"
+      # === Config.ClientURLs (список через запятую) ===
+      CLIENT_URLS: "${CLIENT_URLS}"
 
-      S3_ENDPOINT: "${S3_ENDPOINT}"
-      S3_ACCESS_KEY_ID: "${S3_ACCESS_KEY_ID}"
-      S3_SECRET_ACCESS_KEY: "${S3_SECRET_ACCESS_KEY}"
-      S3_BUCKET: "${S3_BUCKET}"
-      S3_USESSL: "${S3_USESSL}"
+      # === JWT и время жизни токенов ===
+      JWT_ACCESS_SECRET: "${JWT_ACCESS_SECRET}"     # Config.JWTAccessSecret
+      JWT_REFRESH_SECRET: "${JWT_REFRESH_SECRET}"   # Config.JWTRefreshSecret
+      ACCESS_TIME_MINUTE: "${ACCESS_TIME_MINUTE}"   # Config.AccessTime (минуты)
+      REFRESH_TIME_HOURS: "${REFRESH_TIME_HOURS}"   # Config.RefreshTime (часы)
+
+      # === MinIO / S3 ===
+      S3_ENDPOINT: "${S3_ENDPOINT}"                 # Config.MinioEndpoint
+      S3_ACCESS_KEY_ID: "${S3_ACCESS_KEY_ID}"       # Config.MinioAccessKey
+      S3_SECRET_ACCESS_KEY: "${S3_SECRET_ACCESS_KEY}" # Config.MinioSecretKey
+      S3_BUCKET: "${S3_BUCKET}"                     # Config.MinioBucket
+      S3_USESSL: "${S3_USESSL}"                     # Config.MinioSSL (true/false)
+      PRESIGNED_PUBLIC_HOST_NAME: "${PRESIGNED_PUBLIC_HOST_NAME}" # подмена хоста в presigned URL
+
+      # === База данных ===
+      DB_DSN: "${DB_DSN}"                           # Config.DBDSN
+
+      # === Лимиты и настройки приложения ===
+      SIZE_LIMIT_AUDIO_MB: "${SIZE_LIMIT_AUDIO_MB}"               # Config.SizeLimitAudioMB
+      GENERATE_PASSWORD_LENGTH: "${GENERATE_PASSWORD_LENGTH}"     # Config.GeneratePasswordLength
+      LIMIT_UPLOAD_AUDIO_MINUTE: "${LIMIT_UPLOAD_AUDIO_MINUTE}"   # Config.LimitUploadAudioMinutes (минуты)
+      MAX_UPLOAD_WORKERS: "${MAX_UPLOAD_WORKERS}"                 # Config.MaxUploadWorkers
+      AI_WORKERS_HTTP_TIMEOUT_HOURS: "${AI_WORKERS_HTTP_TIMEOUT_HOURS}" # Config.AIWorkersTimeoutHour (часы)
+      LIMIT_AUDIO_URL_MINUTS: "${LIMIT_AUDIO_URL_MINUTS}"         # Config.LimitAudioURLMinuts (минуты)
+
+      # === Ресурсы сервера (для балансировки очередей) ===
+      TOTAL_VRAM_GB: "${TOTAL_VRAM_GB}"             # Config.TotalVRAMGB
+      TOTAL_RAM_GB: "${TOTAL_RAM_GB}"               # Config.TotalRAMGB
+
+      # === URL-адреса AI-воркеров (StageConfig.EndPoint) ===
+      DENOISE_WORKER_URL: "${DENOISE_WORKER_URL}"   # для этапа denoise
+      DIARIZE_WORKER_URL: "${DIARIZE_WORKER_URL}"   # для этапа diarize
+      TRANSCRIBE_WORKER_URL: "${TRANSCRIBE_WORKER_URL}" # для этапа transcribe
+      SUMMARY_WORKER_URL: "${SUMMARY_WORKER_URL}"   # для этапа summarize
     volumes: # пробрасываем папку с логами напрямую в докер контейнер 
       - ./logs:/root/logs
     ports:
