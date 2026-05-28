@@ -49,7 +49,7 @@ services:
 
   app:
     build: . # берем образ из докер файла
-    container_name: accelerator-go   
+    container_name: accelerator-go
     environment: # так как мы не кидаем туда .env, нам нужно предоставить доступ к переменным из него
       # === Config.ServerPort ===
       SERVER_PORT: "${SERVER_PORT}"
@@ -69,7 +69,7 @@ services:
       S3_SECRET_ACCESS_KEY: "${S3_SECRET_ACCESS_KEY}" # Config.MinioSecretKey
       S3_BUCKET: "${S3_BUCKET}"                     # Config.MinioBucket
       S3_USESSL: "${S3_USESSL}"                     # Config.MinioSSL (true/false)
-      PRESIGNED_PUBLIC_HOST_NAME: "${PRESIGNED_PUBLIC_HOST_NAME}" # подмена хоста в presigned URL
+
 
       # === База данных ===
       DB_DSN: "${DB_DSN}"                           # Config.DBDSN
@@ -81,6 +81,7 @@ services:
       MAX_UPLOAD_WORKERS: "${MAX_UPLOAD_WORKERS}"                 # Config.MaxUploadWorkers
       AI_WORKERS_HTTP_TIMEOUT_HOURS: "${AI_WORKERS_HTTP_TIMEOUT_HOURS}" # Config.AIWorkersTimeoutHour (часы)
       LIMIT_AUDIO_URL_MINUTS: "${LIMIT_AUDIO_URL_MINUTS}"         # Config.LimitAudioURLMinuts (минуты)
+      LIMIT_LOAD_DURATION_SECONDS: "${LIMIT_LOAD_DURATION_SECONDS}" 
 
       # === Ресурсы сервера (для балансировки очередей) ===
       TOTAL_VRAM_GB: "${TOTAL_VRAM_GB}"             # Config.TotalVRAMGB
@@ -93,7 +94,7 @@ services:
       SUMMARY_WORKER_URL: "${SUMMARY_WORKER_URL}"   # для этапа summarize
     volumes: # пробрасываем папку с логами напрямую в докер контейнер 
       - ./logs:/root/logs
-    ports:
+    ports: # используем режим хоста, поэтому не пробрасываем никакие порты
       - "8000:${GO_SERVER_PORT}"
     depends_on:
       migrate: # ждем пока миграции успешно применятся и запустится объектное хранилище

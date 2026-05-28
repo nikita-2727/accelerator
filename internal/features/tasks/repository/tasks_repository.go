@@ -210,7 +210,7 @@ func (r *TasksRepo) ClaimNextTask(ctx context.Context, statusPending, statusProc
 	query := `
         SELECT id, user_id, group_id, task_name, description, meeting_date,
                pattern_id, file_path, file_name, duration, status, result_json,
-               asr_model, llm_model, created_at, updated_at, started_at, completed_at
+               created_at, updated_at, started_at, completed_at
         FROM tasks
         WHERE status = $1
         ORDER BY ((EXTRACT(EPOCH FROM (NOW() - created_at)) * 0.2 + EXTRACT(EPOCH FROM (NOW() - stage_entered_at)) * 1.0) / NULLIF(duration, 1)) DESC

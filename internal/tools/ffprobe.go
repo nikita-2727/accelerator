@@ -13,8 +13,8 @@ import (
 // GetAudioDurationSeconds возвращает округлённую до секунды длительность
 // аудиофайла через ffprobe. Работает на любом формате, который понимает
 // ffmpeg (MP3, WAV, OGG/Opus, FLAC, AAC/M4A и т. д.).
-func GetAudioDurationSeconds(ctx context.Context, path string) (int, error) {
-	ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+func GetAudioDurationSeconds(ctx context.Context, path string, limitLoadDurationSeconds time.Duration) (int, error) {
+	ctx, cancel := context.WithTimeout(ctx, limitLoadDurationSeconds)
 	defer cancel()
 
 	cmd := exec.CommandContext(ctx,

@@ -25,12 +25,13 @@ type Config struct {
 
 	DBDSN string
 
-	SizeLimitAudioMB        int
-	GeneratePasswordLength  int
-	LimitUploadAudioMinutes time.Duration
-	MaxUploadWorkers        int
-	AIWorkersTimeoutHour    time.Duration
-	LimitAudioURLMinuts     time.Duration
+	SizeLimitAudioMB         int
+	GeneratePasswordLength   int
+	LimitUploadAudioMinutes  time.Duration
+	MaxUploadWorkers         int
+	AIWorkersTimeoutHour     time.Duration
+	LimitAudioURLMinuts      time.Duration
+	LimitLoadDurationSeconds time.Duration
 
 	TotalVRAMGB int
 	TotalRAMGB  int
@@ -51,11 +52,11 @@ func LoadConfig() *Config {
 		AccessTime:       getEnvDuration("ACCESS_TIME_MINUTE", 15) * time.Minute,
 		RefreshTime:      getEnvDuration("REFRESH_TIME_HOURS", 7*24) * time.Hour,
 
-		MinioEndpoint:  getEnvString("S3_ENDPOINT", "minio:9000"),
-		MinioAccessKey: getEnvString("S3_ACCESS_KEY_ID", "minioadmin"),
-		MinioSecretKey: getEnvString("S3_SECRET_ACCESS_KEY", "minioadmin"),
-		MinioBucket:    getEnvString("S3_BUCKET", "neurodoc"),
-		MinioSSL:       getEnvBool("S3_USESSL", false),
+		MinioEndpoint:           getEnvString("S3_ENDPOINT", "minio:9000"),
+		MinioAccessKey:          getEnvString("S3_ACCESS_KEY_ID", "minioadmin"),
+		MinioSecretKey:          getEnvString("S3_SECRET_ACCESS_KEY", "minioadmin"),
+		MinioBucket:             getEnvString("S3_BUCKET", "neurodoc"),
+		MinioSSL:                getEnvBool("S3_USESSL", false),
 		PresignedPublicHostName: getEnvString("PRESIGNED_PUBLIC_HOST_NAME", "localhost:9000"),
 
 		DBDSN:                   getEnvString("DB_DSN", "postgres://nikita:1423qewr@postgres:5432/accelerator"),
@@ -65,6 +66,7 @@ func LoadConfig() *Config {
 		MaxUploadWorkers:        getEnvInt("MAX_UPLOAD_WORKERS", 20),
 		AIWorkersTimeoutHour:    getEnvDuration("AI_WORKERS_HTTP_TIMEOUT_HOURS", 2) * time.Hour,
 		LimitAudioURLMinuts:     getEnvDuration("LIMIT_AUDIO_URL_MINUTS", 60) * time.Minute,
+		LimitLoadDurationSeconds: getEnvDuration("LIMIT_LOAD_DURATION_SECONDS", 30) * time.Second,
 
 		TotalVRAMGB: getEnvInt("TOTAL_VRAM_GB", 12),
 		TotalRAMGB:  getEnvInt("TOTAL_RAM_GB", 16),

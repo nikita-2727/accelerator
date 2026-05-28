@@ -260,7 +260,7 @@ func (trans *TasksTransport) UploadHandle(w http.ResponseWriter, r *http.Request
 	taskID := uuid.New().String()
 	// сохраняем objectKey в БД в поле file_path
 	objectKey := config.UploadKey(groupID, taskID)
-    
+
 	// создает задачу с сгенерированным заранее ID
 	taskInfo, err := trans.serv.UploadTaskService(
 		ctx,
@@ -349,26 +349,26 @@ func (trans *TasksTransport) processUpload(
 	// --------------------------------------> ПОЛУЧАЕМ ДЛИТЕЛЬНОСТЬ АУДИО <---------------------------------------------
 	// Перемотка и определение длительности
 	if _, err := tmpFile.Seek(0, io.SeekStart); err != nil {
-        taskErr = fmt.Errorf("перемотка перед длительностью: %w", err)
-        return
-    }
-    duration, taskErr = tools.GetAudioDurationSeconds(ctx, tmpFile.Name())
-    if taskErr != nil {
-        taskErr = fmt.Errorf("определение длительности: %w", taskErr)
-        return
-    }
+		taskErr = fmt.Errorf("перемотка перед длительностью: %w", err)
+		return
+	}
+	duration, taskErr = tools.GetAudioDurationSeconds(ctx, tmpFile.Name(), trans.cfg.LimitLoadDurationSeconds)
+	if taskErr != nil {
+		taskErr = fmt.Errorf("определение длительности: %w", taskErr)
+		return
+	}
 
 	// --------------------------------------> ЗАГРУЖАЕМ В S3 ХРАНИЛИЩЕ <---------------------------------------------
 	// Перемотка и загрузка в S3
 	if _, err := tmpFile.Seek(0, io.SeekStart); err != nil {
-        taskErr = fmt.Errorf("перемотка перед S3: %w", err)
-        return
-    }
-    _, taskErr = trans.minio.UploadFile(ctx, objectKey, tmpFile, fileSize, fileType)
-    if taskErr != nil {
-        taskErr = fmt.Errorf("загрузка в S3: %w", taskErr)
-        return
-    }
+		taskErr = fmt.Errorf("перемотка перед S3: %w", err)
+		return
+	}
+	_, taskErr = trans.minio.UploadFile(ctx, objectKey, tmpFile, fileSize, fileType)
+	if taskErr != nil {
+		taskErr = fmt.Errorf("загрузка в S3: %w", taskErr)
+		return
+	}
 
 }
 
@@ -398,7 +398,7 @@ func (trans *TasksTransport) GetAudioTaskHandle(w http.ResponseWriter, r *http.R
 
 	// маппим результат в дто и отправляем на клиент
 	newResponse := dto.AudioResponseDTO{
-		AudioURL: audioURL,
+		AudioURL:  audioURL,
 		ExpiresAt: expiresAt,
 	}
 
