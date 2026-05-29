@@ -13,7 +13,6 @@ WORKDIR /app
 # Виртуальное окружение
 RUN python3.12 -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
-ENV SUMMARY_PORT=8004
 
 # Установка PyTorch (опционально, для унификации)
 RUN pip install --pre torch torchvision torchaudio --index-url https://download.pytorch.org/whl/nightly/cu128

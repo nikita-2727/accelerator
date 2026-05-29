@@ -18,7 +18,6 @@ WORKDIR /app
 # создаем новое виртуальное окружение
 RUN python3.12 -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
-ENV DENOISE_PORT=8001 
 
 # Ставим ночную сборку PyTorch под свежую архитектуру GPU
 RUN pip install --pre torch torchvision torchaudio --index-url https://download.pytorch.org/whl/nightly/cu128
@@ -31,6 +30,3 @@ RUN mkdir -p /app/models && \
     python3.12 -c "from audio_separator.separator import Separator; Separator(model_file_dir='/app/models').download_model_files('model_bs_roformer_ep_317_sdr_12.9755.ckpt')"
 
 COPY . .
-
-# Запуск через uvicorn
-CMD ["uvicorn", "denoise:app", "--host", "0.0.0.0", "--port", "${DENOISE_PORT}"]

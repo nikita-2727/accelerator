@@ -14,7 +14,6 @@ WORKDIR /app
 # Виртуальное окружение
 RUN python3.12 -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
-ENV DIARIZE_PORT=8002
 
 # PyTorch с CUDA 12.8
 RUN pip install --pre torch torchaudio --index-url https://download.pytorch.org/whl/nightly/cu128
@@ -23,6 +22,3 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
-
-# Запуск через uvicorn
-CMD ["uvicorn", "diarize:app", "--host", "0.0.0.0", "--port", "${DIARIZE_PORT}"]

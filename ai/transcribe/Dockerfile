@@ -14,7 +14,6 @@ WORKDIR /app
 
 RUN python3.12 -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
-ENV TRANSCRIBE_PORT=8003
 
 # PyTorch с CUDA 12.8
 RUN pip install --pre torch torchaudio --index-url https://download.pytorch.org/whl/nightly/cu128
@@ -23,5 +22,3 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
-
-CMD ["uvicorn", "transcribe:app", "--host", "0.0.0.0", "--port", "${TRANSCRIBE_PORT}"]
