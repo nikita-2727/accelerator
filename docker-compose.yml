@@ -295,17 +295,17 @@ services:
       - accelerator-network
 
   # сервис перезапустит контейнер после получения новых сертификатов, заставит nginx перечитать конфигурацию и сертификаты без разрыва соединений
-  reload-nginx:
-    image: docker:cli
-    container_name: accelerator-reload-nginx
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
-    command: sh -c "sleep 5 && docker kill -s HUP accelerator-nginx"
-    depends_on: # запустится, когда будет выполнен контейнер выпуска сертификатов
-      certbot-init:
-        condition: service_completed_successfully
-    networks:
-      - accelerator-network
+  # reload-nginx:
+  #   image: docker:cli
+  #   container_name: accelerator-reload-nginx
+  #   volumes:
+  #     - /var/run/docker.sock:/var/run/docker.sock
+  #   command: sh -c "sleep 5 && docker kill -s HUP accelerator-nginx"
+  #   depends_on: # запустится, когда будет выполнен контейнер выпуска сертификатов
+  #     certbot-init:
+  #       condition: service_completed_successfully
+  #   networks:
+  #     - accelerator-network
 
 
 volumes: # используем именованные тома, а не привязка к конкретной папке
