@@ -6,9 +6,9 @@ import gc          # Сборщик мусора
 import asyncio     # Асинхронность
 import glob        # Для поиска .gguf файлов
 from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
+# from pydantic import BaseModel
 from contextlib import asynccontextmanager
-from llama_cpp import Llama
+# from llama_cpp import Llama
 
 from time import sleep
 

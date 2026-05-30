@@ -4,13 +4,13 @@ import json
 import uuid
 import warnings
 import requests
-import torch
+# import torch
 import gc          # Сборщик мусора
 import asyncio     # Асинхронность
-from pydub import AudioSegment
+# from pydub import AudioSegment
 from contextlib import asynccontextmanager
 from fastapi import FastAPI, HTTPException
-from pydantic import BaseModel
+# from pydantic import BaseModel
 from time import sleep
 
 warnings.filterwarnings("ignore")
