@@ -37,10 +37,6 @@ fi
 
 # ssl-dhparams.pem (если нет – используем готовый, чтобы не тормозить запуск)
 if [ ! -f /etc/letsencrypt/ssl-dhparams.pem ]; then
-    # Готовый dhparams из образа certbot (скопируем заранее) или сгенерируем короткий
-    # Вариант 1: сгенерировать 2048 (медленно)
-    # openssl dhparam -out /etc/letsencrypt/ssl-dhparams.pem 2048
-    # Вариант 2 (быстрый): использовать dhparams по умолчанию из alpine
-    cp /etc/ssl/dhparam.pem /etc/letsencrypt/ssl-dhparams.pem 2>/dev/null || \
-    openssl dhparam -out /etc/letsencrypt/ssl-dhparams.pem 1024
+    # Генерируем 2048-битный DH-ключ (может занять 10–60 секунд)
+    openssl dhparam -out /etc/letsencrypt/ssl-dhparams.pem 2048
 fi
