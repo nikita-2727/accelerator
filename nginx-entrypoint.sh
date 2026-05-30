@@ -4,6 +4,11 @@
 #!/bin/sh
 set -e
 
+# Установим openssl, если его нет
+if ! command -v openssl >/dev/null 2>&1; then
+    apk add --no-cache openssl
+fi
+
 # Каталог сертификатов
 CERT_DIR="/etc/letsencrypt/live/xn----9sbda5aajj0ab4c.xn--p1ai"
 
