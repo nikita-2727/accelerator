@@ -244,7 +244,7 @@ services:
       - MAX_BODY_SIZE=${SIZE_LIMIT_AUDIO_MB}   # подставится в nginx, например, "4096M"
     volumes:
       - ./nginx.conf.template:/etc/nginx/templates/default.conf.template:ro # пробрасываем конфиг nnginx
-      - certbot-etc:/etc/letsencrypt:ro # пробрасываем именованные тома с сертификатами в контейнер с флагом только для чтения для безопасности
+      - certbot-etc:/etc/letsencrypt:rw # пробрасываем именованные тома с сертификатами в контейнер
       - certbot-www:/var/www/certbot:ro
       - ./nginx-entrypoint.sh:/docker-entrypoint.d/00-cert-init.sh:rw   # монтируем наш скрипт, чтобы он запукался при запуске с базовыми настройками и сертификатами
     ports:
@@ -256,7 +256,7 @@ services:
       - accelerator-network
     restart: unless-stopped
     healthcheck:   # чтобы certbot знал, что nginx жив
-      test: ["CMD", "nginx", "-t"]
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/"]
       interval: 10s
       timeout: 5s
       retries: 5
