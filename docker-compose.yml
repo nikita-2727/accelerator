@@ -27,6 +27,7 @@ services:
       MINIO_ROOT_PASSWORD: "${S3_SECRET_ACCESS_KEY}"
       MINIO_SERVER_URL: "${MINIO_SERVER_URL}" # чтобы генерировать публичные ссылки с моим вдресом, а не minio:9000
       MINIO_BROWSER_CORS: "${CLIENT_URL}" # чтобы клиент мог взаимодействовать с s3
+      MINIO_API_CORS_ALLOW_ORIGIN: "${CLIENT_URL}" # ставим корсы для взаимодействия с бакетом
     expose: # 9000 - порт самого клиента minio, 9001 - веб-консоль небольшой графический интерфейс
       - "${S3_CLIENT_PORT}"
       - "${S3_CONSOLE_PORT}"
@@ -35,35 +36,6 @@ services:
     networks:
       - accelerator-network
 
-  minio-cors:
-    image: minio/mc:latest
-    container_name: accelerator-minio-cors-setup
-    depends_on: # этот сервис ждет пока загрузится minio и устанавливает CORS для бакета, чтобы клиент мог с ним взаимодействовать через ссылки
-      minio:
-        condition: service_started
-    entrypoint: >
-      /bin/sh -c "
-      until mc alias set myminio http://${S3_ENDPOINT} ${S3_ACCESS_KEY_ID} ${S3_SECRET_ACCESS_KEY}; do
-        echo 'Waiting for MinIO...';
-        sleep 2;
-      done;
-      mc cors set myminio/${S3_BUCKET} <<EOF
-      {
-        \"CORSRules\": [
-          {
-            \"AllowedOrigins\": [\"${CLIENT_URL}\"],
-            \"AllowedMethods\": [\"GET\", \"PUT\", \"HEAD\"],
-            \"AllowedHeaders\": [\"*\"],
-            \"ExposeHeaders\": [\"ETag\", \"x-amz-request-id\"]
-          }
-        ]
-      }
-      EOF
-      echo 'CORS policy applied';
-      exit 0;
-      "
-    networks:
-      - accelerator-network
 
   migrate:
     image: migrate/migrate:v4.17.0
@@ -268,13 +240,12 @@ services:
     image: nginx:alpine
     container_name: accelerator-nginx
     environment:
-      - MAX_BODY_SIZE=${SIZE_LIMIT_AUDIO_MB}M   # подставится в nginx, например, "4096M"
+      - MAX_BODY_SIZE=${SIZE_LIMIT_AUDIO_MB}   # подставится в nginx, например, "4096M"
     volumes:
       - ./nginx.conf.template:/etc/nginx/templates/default.conf.template:ro # пробрасываем конфиг nnginx
       - certbot-etc:/etc/letsencrypt:ro # пробрасываем именованные тома с сертификатами в контейнер с флагом только для чтения для безопасности
       - certbot-www:/var/www/certbot:ro
-    # обрабатывает шаблон, чтобы корректно подставились данные
-    command: /bin/sh -c "envsubst '$$MAX_BODY_SIZE' < /etc/nginx/templates/default.conf.template > /etc/nginx/conf.d/default.conf && nginx -g 'daemon off;'"
+      - ./nginx-entrypoint.sh:/docker-entrypoint.d/00-cert-init.sh:ro   # монтируем наш скрипт, чтобы он запукался при запуске с базовыми настройками и сертификатами
     ports:
       - "80:80"
       - "443:443"
@@ -283,9 +254,14 @@ services:
     networks:
       - accelerator-network
     restart: unless-stopped
+    healthcheck:   # чтобы certbot знал, что nginx жив
+      test: ["CMD", "nginx", "-t"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   # Сервис для первичного получения сертификата (запустится один раз)
-  certbot:
+  certbot-init:
     image: certbot/certbot:latest
     container_name: accelerator-certbot-init
     volumes:
@@ -301,8 +277,9 @@ services:
       -d ${CLIENT_CERTBOT_1} 
       -d ${CLIENT_CERTBOT_2} 
       -d ${MINIO_CERTBOT}
-    depends_on:
-      - nginx
+    depends_on: # ждем здорового nginx
+      nginx:
+        condition: service_healthy
     networks:
       - accelerator-network
 
