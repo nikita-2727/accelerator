@@ -239,13 +239,14 @@ services:
   nginx: 
     image: nginx:alpine
     container_name: accelerator-nginx
+    user: root
     environment:
       - MAX_BODY_SIZE=${SIZE_LIMIT_AUDIO_MB}   # подставится в nginx, например, "4096M"
     volumes:
       - ./nginx.conf.template:/etc/nginx/templates/default.conf.template:ro # пробрасываем конфиг nnginx
       - certbot-etc:/etc/letsencrypt:ro # пробрасываем именованные тома с сертификатами в контейнер с флагом только для чтения для безопасности
       - certbot-www:/var/www/certbot:ro
-      - ./nginx-entrypoint.sh:/docker-entrypoint.d/00-cert-init.sh:ro   # монтируем наш скрипт, чтобы он запукался при запуске с базовыми настройками и сертификатами
+      - ./nginx-entrypoint.sh:/docker-entrypoint.d/00-cert-init.sh:rw   # монтируем наш скрипт, чтобы он запукался при запуске с базовыми настройками и сертификатами
     ports:
       - "80:80"
       - "443:443"
