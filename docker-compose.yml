@@ -254,8 +254,8 @@ services:
       context: ../frontend # Поднимаемся на уровень выше и заходим в соседнюю папку frontend
       dockerfile: Dockerfile
     container_name: accelerator-frontend
-    ports:
-      - "8080:80" # Открываем порт 8080 на сервере Ubuntu и направляем его на 80 порт Nginx
+    expose:
+      - "${FRONTEND_PORT}" # Открываем порт 8080 на сервере Ubuntu и направляем его на 80 порт Nginx
     depends_on:
       app:
         condition: service_started
@@ -267,12 +267,14 @@ services:
   nginx: 
     image: nginx:alpine
     container_name: accelerator-nginx
+    environment:
+      - MAX_BODY_SIZE=${SIZE_LIMIT_AUDIO_MB}M   # подставится в nginx, например, "4096M"
     volumes:
-      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro # пробрасываем конфиг nnginx
+      - ./nginx.conf.template:/etc/nginx/conf.d/default.conf.template:ro # пробрасываем конфиг nnginx
       - certbot-etc:/etc/letsencrypt:ro # пробрасываем именованные тома с сертификатами в контейнер с флагом только для чтения для безопасности
       - certbot-www:/var/www/certbot:ro
-      # Если у тебя будет собранный фронтенд, пробрось его в /usr/share/nginx/html
-      # - ./frontend-dist:/usr/share/nginx/html
+    # обрабатывает шаблон, чтобы корректно подставились данные
+    command: /bin/sh -c "envsubst '$$MAX_BODY_SIZE' < /etc/nginx/templates/default.conf.template > /etc/nginx/conf.d/default.conf && nginx -g 'daemon off;'"
     ports:
       - "80:80"
       - "443:443"
