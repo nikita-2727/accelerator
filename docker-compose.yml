@@ -256,7 +256,7 @@ services:
       - accelerator-network
     restart: unless-stopped
     healthcheck:   # чтобы certbot знал, что nginx жив
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost/"]
+      test: ["CMD", "pgrep", "nginx"]
       interval: 10s
       timeout: 5s
       retries: 5
