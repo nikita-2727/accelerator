@@ -268,7 +268,12 @@ services:
     volumes:
       - certbot-etc:/etc/letsencrypt
       - certbot-www:/var/www/certbot
-    entrypoint: /bin/sh -c "sleep 15; rm -rf /etc/letsencrypt/live /etc/letsencrypt/archive /etc/letsencrypt/renewal; certbot certonly --webroot --webroot-path=/var/www/certbot --email $${EMAIL_CERTBOT} --agree-tos --no-eff-email --force-renewal -d $${CLIENT_CERTBOT_1} -d $${CLIENT_CERTBOT_2} -d $${MINIO_CERTBOT};"
+    environment: # передаем переменные окружения для передачи в команду
+      - EMAIL_CERTBOT=${EMAIL_CERTBOT}
+      - CLIENT_CERTBOT_1=${CLIENT_CERTBOT_1}
+      - CLIENT_CERTBOT_2=${CLIENT_CERTBOT_2}
+      - MINIO_CERTBOT=${MINIO_CERTBOT}
+    entrypoint: /bin/sh -c "sleep 15; rm -rf /etc/letsencrypt/live /etc/letsencrypt/archive /etc/letsencrypt/renewal; certbot certonly --webroot --webroot-path=/var/www/certbot --email $EMAIL_CERTBOT --agree-tos --no-eff-email --force-renewal -d $CLIENT_CERTBOT_1 -d $CLIENT_CERTBOT_2 -d $MINIO_CERTBOT;"
     depends_on:
       nginx: # запустится, когда будет живой nginx
         condition: service_healthy
