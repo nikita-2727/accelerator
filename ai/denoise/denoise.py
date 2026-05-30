@@ -6,7 +6,7 @@ import uuid
 # import torch
 import asyncio
 from fastapi import FastAPI, HTTPException
-# from pydantic import BaseModel
+from pydantic import BaseModel
 from contextlib import asynccontextmanager
 # from audio_separator.separator import Separator
 

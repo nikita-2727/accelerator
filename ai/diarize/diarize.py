@@ -11,7 +11,7 @@ import gc          # Сборщик мусора Python
 import asyncio     # Для асинхронности
 from datetime import datetime
 from fastapi import FastAPI, HTTPException
-# from pydantic import BaseModel
+from pydantic import BaseModel
 from contextlib import asynccontextmanager
 from time import sleep
 
