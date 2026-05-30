@@ -235,7 +235,7 @@ services:
       - accelerator-network
     restart: unless-stopped
 
-
+  # запускает nginnx с первичными временными сертификатами и насттройками
   nginx: 
     image: nginx:alpine
     container_name: accelerator-nginx
@@ -261,25 +261,29 @@ services:
       timeout: 5s
       retries: 5
 
-  # Сервис для первичного получения сертификата (запустится один раз)
+  # Сервис удалит временные сертификаты и создаст новые
   certbot-init:
     image: certbot/certbot:latest
     container_name: accelerator-certbot-init
     volumes:
       - certbot-etc:/etc/letsencrypt
       - certbot-www:/var/www/certbot
-    command: > 
-      certonly --webroot 
-      --webroot-path=/var/www/certbot 
-      --email ${EMAIL_CERTBOT} 
-      --agree-tos 
-      --no-eff-email 
-      --force-renewal 
-      -d ${CLIENT_CERTBOT_1} 
-      -d ${CLIENT_CERTBOT_2} 
-      -d ${MINIO_CERTBOT}
-    depends_on: # ждем здорового nginx
-      nginx:
+    entrypoint: >
+      /bin/sh -c "
+        sleep 15;
+        rm -rf /etc/letsencrypt/live /etc/letsencrypt/archive /etc/letsencrypt/renewal;
+        certbot certonly --webroot
+          --webroot-path=/var/www/certbot
+          --email $${EMAIL_CERTBOT}
+          --agree-tos
+          --no-eff-email
+          --force-renewal
+          -d $${CLIENT_CERTBOT_1}
+          -d $${CLIENT_CERTBOT_2}
+          -d $${MINIO_CERTBOT}
+      "
+    depends_on:
+      nginx: # ждем здорового nginx
         condition: service_healthy
     networks:
       - accelerator-network
@@ -295,6 +299,19 @@ services:
       - certbot-etc:/etc/letsencrypt
       - certbot-www:/var/www/certbot
       - /var/run/docker.sock:/var/run/docker.sock   # даём доступ к Docker API
+    networks:
+      - accelerator-network
+
+  # сервис перезапустит контейнер после получения новых сертификатов, заставит nginx перечитать конфигурацию и сертификаты без разрыва соединений
+  reload-nginx:
+    image: alpine
+    container_name: accelerator-reload-nginx
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+    command: sh -c "sleep 5 && docker kill -s HUP accelerator-nginx"
+    depends_on:
+      certbot-init:
+        condition: service_completed_successfully
     networks:
       - accelerator-network
 
