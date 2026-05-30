@@ -21,8 +21,8 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Сборка llama-cpp-python с поддержкой CUDA
-ENV CMAKE_ARGS="-DGGML_CUDA=on"
-RUN pip install --no-cache-dir llama-cpp-python
+# ENV CMAKE_ARGS="-DGGML_CUDA=on"
+# RUN pip install --no-cache-dir llama-cpp-python
 
 COPY . .
 

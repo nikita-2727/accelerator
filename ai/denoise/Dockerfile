@@ -26,7 +26,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Скачиваем веса модели прямо в папку /app/models на этапе сборки
-RUN mkdir -p /app/models && \
-    python3.12 -c "from audio_separator.separator import Separator; Separator(model_file_dir='/app/models').download_model_files('model_bs_roformer_ep_317_sdr_12.9755.ckpt')"
+# RUN mkdir -p /app/models && \
+#     python3.12 -c "from audio_separator.separator import Separator; Separator(model_file_dir='/app/models').download_model_files('model_bs_roformer_ep_317_sdr_12.9755.ckpt')"
 
 COPY . .
