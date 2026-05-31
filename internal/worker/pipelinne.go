@@ -48,12 +48,21 @@ func NewOrchestrator(
 // Запускает по одной горутине на каждый этап из списка stage
 func (o *Orchestrator) Run(ctx context.Context) {
 	for _, st := range o.stages {
+		fmt.Printf("Orchestrator: starting worker for stage=%s\n", st.Name)
 		go o.runStageWorker(ctx, st) // запускаем вечный цикл для каждой
 	}
 }
 
 // вечный цикл, обрабатывающий задачи для каждого этапа этапа
 func (o *Orchestrator) runStageWorker(ctx context.Context, stage config.StageConfig) {
+	defer func() {
+        if r := recover(); r != nil {
+			fmt.Printf("runStageWorker: stage=%s, PANIC!!!!!!!!!!!!!!!!\n", stage.Name)
+            slog.Error("panic in runStageWorker", "stage", stage.Name, "panic", r)
+        }
+    }()
+
+
 	for {
 		select {
 		case <-ctx.Done():
