@@ -1,6 +1,6 @@
 # HTTP-бэкенд для прокси Яндекса (без SSL) — основной домен и www
 server {
-    listen 8080;
+    listen 8080 http2;
     server_name букволов-ии.рф www.букволов-ии.рф
                 xn----9sbda5aajj0ab4c.xn--p1ai
                 www.xn----9sbda5aajj0ab4c.xn--p1ai;
@@ -16,7 +16,7 @@ server {
     }
 
     location /api/ {
-        proxy_pass http://app:8000/;
+        proxy_pass http://app:8000;
         proxy_request_buffering off;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
@@ -27,7 +27,7 @@ server {
 
 # HTTP-бэкенд для MinIO (поддомен s3)
 server {
-    listen 8080;
+    listen 8080 http2;
     server_name s3.букволов-ии.рф s3.xn----9sbda5aajj0ab4c.xn--p1ai;
 
     client_max_body_size 0;
