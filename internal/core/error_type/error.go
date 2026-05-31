@@ -55,7 +55,7 @@ func IsNotFound(err error) bool {
 		return false
 	}
 
-	return appErr.Code == 500
+	return appErr.Code == 404
 }
 
 func NewConflict(msg string) *HTTPError {

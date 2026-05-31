@@ -77,9 +77,6 @@ func (o *Orchestrator) runStageWorker(ctx context.Context, stage config.StageCon
 		task, err := o.tasksRepo.ClaimNextTask(ctx, stage.StatusPending, stage.StatusProcessing)
 		if err != nil {
 			// может вернуть ошибку, если уже успели занять задачу и новых нет, либо внутренняя ошибка репозитория
-			// в любом случае освобождаем память
-			o.resourceManager.Release(stage.Quota)
-
 			if error_type.IsNotFound(err) {
 				// Это не ошибка, просто ждём
 				fmt.Printf("runStageWorker: stage=%s, no task claimed (not found), sleeping 2s\n", stage.Name)
