@@ -18,7 +18,36 @@ server {
     }
 }
 
+# HTTP-бэкенд для прокси Яндекса (без SSL)
+server {
+    listen 8080;
+    server_name букволов-ии.рф www.букволов-ии.рф s3.букволов-ии.рф
+                xn----9sbda5aajj0ab4c.xn--p1ai
+                www.xn----9sbda5aajj0ab4c.xn--p1ai
+                s3.xn----9sbda5aajj0ab4c.xn--p1ai;
+
+    client_max_body_size ${MAX_BODY_SIZE}M;
+
+    location / {
+        proxy_pass http://frontend:80;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+
+    location /api/ {
+        proxy_pass http://app:8000/;
+        proxy_request_buffering off;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+
 # Основной домен – фронтенд + API
+# на роутере проброшен 443 -> 8443, обходит блокировку провайдера
 server {
     listen 443 ssl http2;
     server_name букволов-ии.рф www.букволов-ии.рф
