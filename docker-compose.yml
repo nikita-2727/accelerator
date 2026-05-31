@@ -249,7 +249,7 @@ services:
       - ./nginx-entrypoint.sh:/docker-entrypoint.d/00-cert-init.sh:rw   # монтируем наш скрипт, чтобы он запукался при запуске с базовыми настройками и сертификатами
     ports:
       - "80:80"
-      - "8443:443"
+      - "443:443"
     depends_on:
       - app
     networks:
