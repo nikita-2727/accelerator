@@ -37,7 +37,7 @@ func (serv *AdminService) AddCreatorService(ctx context.Context, login, password
 
 	// если она не пустая, то запрещаем доступ и кидаем 404
 	if !isEmptyUsers {
-		return nil, error_type.NewNotFound("Страница не найдена")
+		return nil, error_type.NewBadRequest("Страница не найдена")
 	}
 
 	// если есть флаг теста, значит надо только узнать, есть ли креатор или нет
