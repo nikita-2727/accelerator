@@ -1,6 +1,7 @@
 package error_type
 
 import (
+	"errors"
 	"net/http"
 )
 
@@ -44,6 +45,17 @@ func NewNotFound(msg string) *HTTPError {
 		Code:    http.StatusNotFound,
 		Message: msg,
 	}
+}
+
+func IsNotFound(err error) bool {
+	var appErr *HTTPError
+	if errors.As(err, &appErr) {
+
+	} else {
+		return false
+	}
+
+	return appErr.Code == 500
 }
 
 func NewConflict(msg string) *HTTPError {

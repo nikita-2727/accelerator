@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"accelerator/internal/core/config"
+	"accelerator/internal/core/error_type"
 	"accelerator/internal/core/storage"
 	"accelerator/internal/domains"
 	"accelerator/internal/features/tasks/repository"
@@ -86,8 +87,13 @@ func (o *Orchestrator) runStageWorker(ctx context.Context, stage config.StageCon
 			// в любом случае освобождаем память
 			o.resourceManager.Release(stage.Quota)
 
-			slog.Error(fmt.Sprintf("Error claiming task for %s:", stage.Name), "err", err)
-			time.Sleep(1 * time.Second)
+			if error_type.IsNotFound(err) {
+				// Это не ошибка, просто ждём
+				time.Sleep(2 * time.Second)
+			} else {
+				slog.Error(fmt.Sprintf("Error claiming task for %s:", stage.Name), "err", err)
+				time.Sleep(1 * time.Second)
+			}
 			continue
 		}
 
