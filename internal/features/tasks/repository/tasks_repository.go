@@ -208,7 +208,7 @@ func (r *TasksRepo) ClaimNextTask(ctx context.Context, statusPending, statusProc
 	defer tx.Rollback(ctx)
 
 	query := `
-        SELECT id, user_id, group_id, task_name, description, meeting_date,
+        SELECT id, user_id, group_id, task_name, description, meeting_date::text,
                pattern_id, file_path, file_name, duration, status, result_json,
                created_at, updated_at, started_at, completed_at
         FROM tasks

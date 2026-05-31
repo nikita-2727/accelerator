@@ -3,9 +3,9 @@ CREATE TABLE tasks (
     user_id UUID REFERENCES users(id), -- при удалении пользователя задача остается
     group_id UUID NOT NULL REFERENCES groups(id) ON DELETE CASCADE, -- при удалении группы все задачи в группе удаляются
     task_name VARCHAR(255) NOT NULL,
-    description TEXT,
-    meeting_date DATE,
-    pattern_id UUID REFERENCES patterns(id), -- привязываем к шаблону промпта, которые создают админ или креатор
+    description TEXT NOT NULL,
+    meeting_date DATE NOT NULL,
+    pattern_id UUID REFERENCES patterns(id) NOT NULL, -- привязываем к шаблону промпта, которые создают админ или креатор
     file_path VARCHAR(512), -- загружается после в горутине, поэтому можетт быть NULL
     file_name VARCHAR(100) NOT NULL,
     duration INTEGER, -- загружается после в горутине, поэтому можетт быть NULL
