@@ -7,7 +7,7 @@ services:
       POSTGRES_PASSWORD: "${POSTGRES_PASSWORD}"
       POSTGRES_DB: "${POSTGRES_DB}"
     ports: # пробрасываем порт из контейнера на локальную машину, чтобы можно было подключиться вне контейнера
-      - "5432:${POSTGRES_PORT}"
+      - "8080:${POSTGRES_PORT}"
     volumes: # сохраняем данные с бд из контейнера в папку на локальной машине, чтобы не стирались при перезагрузке контейнера
       - postgres_data:/var/lib/postgresql/data
     healthcheck: # проверка, работает ли база данных каждые n секунд
@@ -227,7 +227,7 @@ services:
       dockerfile: Dockerfile
     container_name: accelerator-frontend
     expose:
-      - "${FRONTEND_PORT}" # Открываем порт 8080 на сервере Ubuntu и направляем его на 80 порт Nginx
+      - "${FRONTEND_PORT}" # nginx сам перенаправит порт в контейнер frontend на 80
     depends_on:
       app:
         condition: service_started
