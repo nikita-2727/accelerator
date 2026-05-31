@@ -94,7 +94,7 @@ func (serv *TasksService) GetAudioTaskHandle(ctx context.Context, callerID, task
 	}
 
 	// генерируем ссылку на файл
-	audioURL, err := serv.minio.GetPresignedGetPublicURL(ctx, taskInfo.FilePath, serv.cfg.LimitAudioURLMinuts, serv.cfg.PresignedPublicHostName)
+	audioURL, err := serv.minio.GetPresignedGetPublicURL(ctx, taskInfo.FilePath, serv.cfg.LimitAudioURLMinuts)
 	if err != nil {
 		// ставим у задачи статус ошибки и переходим на следующую итерацию цикла
 		return "", time.Time{}, error_type.NewInternal(fmt.Errorf("generate URL audio: %w", err))

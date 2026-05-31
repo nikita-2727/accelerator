@@ -14,12 +14,13 @@ import (
 
 // оборачивает официальный minio.Client и добавляет удобные методы
 type MinIOClient struct {
-	Client *minio.Client
-	Bucket string
+	Client       *minio.Client
+	PublicClient *minio.Client
+	Bucket       string
 }
 
 // создаёт новый экземпляр клиента и проверяет/создаёт бакет
-func NewMinIOClient(endpoint, accessKey, secretKey, bucket string, useSSL bool ) (*MinIOClient, error) {
+func NewMinIOClient(endpoint, accessKey, secretKey, bucket string, useSSL bool, publicEndpoint string) (*MinIOClient, error) {
 	// передаем сюда название и порт контейнера, в котором запущен minio в одной сети
 	client, err := minio.New(endpoint, &minio.Options{
 		// передаем при создании наши секретные ключи из конфига
@@ -47,11 +48,26 @@ func NewMinIOClient(endpoint, accessKey, secretKey, bucket string, useSSL bool )
 		}
 	}
 
-	// возвращаем указатель на наш клиент
+	// Создаём публичного клиента для генерации presigned URL
+	// Убираем префикс https://, если есть, т.к. minio.New ожидает хост:порт
+	publicHost := strings.TrimPrefix(publicEndpoint, "https://")
+	publicHost = strings.TrimPrefix(publicHost, "http://")
+
+	publicClient, err := minio.New(publicHost, &minio.Options{
+		Creds:  credentials.NewStaticV4(accessKey, secretKey, ""),
+		Secure: true, // потому что используем https
+		Region: "us-east-1",
+	})
+	if err != nil {
+		return nil, fmt.Errorf("public minio client init: %w", err)
+	}
+
 	return &MinIOClient{
-		Client: client,
-		Bucket: bucket,
+		Client:       client,
+		PublicClient: publicClient,
+		Bucket:       bucket,
 	}, nil
+
 }
 
 // загружает файл в указанный objectKey
@@ -87,16 +103,14 @@ func (m *MinIOClient) GetPresignedGetLocalURL(ctx context.Context, objectKey str
 }
 
 // передаем новый хост из конфига
-func (m *MinIOClient) GetPresignedGetPublicURL(ctx context.Context, objectKey string, expiry time.Duration, hostName string) (string, error) {
+func (m *MinIOClient) GetPresignedGetPublicURL(ctx context.Context, objectKey string, expiry time.Duration) (string, error) {
 	reqParams := make(url.Values)
-	presignedURL, err := m.Client.PresignedGetObject(ctx, m.Bucket, objectKey, expiry, reqParams)
+	presignedURL, err := m.PublicClient.PresignedGetObject(ctx, m.Bucket, objectKey, expiry, reqParams)
 	if err != nil {
 		return "", fmt.Errorf("presigned get: %w", err)
 	}
 
-	publicURL := strings.Replace(presignedURL.String(), "http://minio:9000", hostName, 1)
-
-	return publicURL, nil
+	return presignedURL.String(), nil
 }
 
 // генерирует временную ссылку для загрузки объекта

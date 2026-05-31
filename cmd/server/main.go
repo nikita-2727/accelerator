@@ -72,6 +72,7 @@ func main() {
 		cfg.MinioSecretKey,
 		cfg.MinioBucket,
 		cfg.MinioSSL,
+		cfg.PresignedPublicHostName,
 	)
 	if err != nil {
 		slog.Error("Ошибка при инициализации клиента minio:", "err", err)
