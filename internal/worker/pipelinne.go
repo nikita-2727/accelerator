@@ -64,29 +64,7 @@ func (o *Orchestrator) runStageWorker(ctx context.Context, stage config.StageCon
 
 		// ============================================= ЗАХВАТ ЗАДАЧИ И ПРОВЕРКИ ===================================================
 
-		// 1. Проверяем, есть ли хоть одна задача для этого этапа
-		has, err := o.tasksRepo.HasPendingTasks(ctx, stage.StatusPending)
-		if err != nil { // какая-то ошибка при проверки задач
-			slog.Error(fmt.Sprintf("Error checking pending tasks for %s:", stage.Name), "err", err)
-			fmt.Printf("runStageWorker: stage=%s, error checking pending tasks: %v\n", stage.Name, err)
-			time.Sleep(5 * time.Second)
-			continue
-		}
-		if !has { // если пока нет, ждем несколько секунд
-			fmt.Printf("runStageWorker: stage=%s, no pending tasks, sleeping 2s\n", stage.Name)
-			time.Sleep(2 * time.Second)
-			continue
-		}
-		fmt.Printf("runStageWorker: stage=%s, found pending tasks\n", stage.Name)
-
-		// 2. Захват ресурсов с учетом возможного отзыва контекста
-		if err := o.resourceManager.AcquireWithContext(ctx, stage.Quota); err != nil {
-			fmt.Printf("runStageWorker: stage=%s, failed to acquire resources (context done): %v\n", stage.Name, err)
-			return // контекст завершён
-		}
-		fmt.Printf("runStageWorker: stage=%s, acquired quota=%d\n", stage.Name, stage.Quota)
-
-		// 3. Атомарно забираем задачу и обновляем ее статус (транзакция внутри репозитория)
+		// 1. Атомарно забираем задачу и обновляем ее статус (транзакция внутри репозитория)
 		task, err := o.tasksRepo.ClaimNextTask(ctx, stage.StatusPending, stage.StatusProcessing)
 		if err != nil {
 			// может вернуть ошибку, если уже успели занять задачу и новых нет, либо внутренняя ошибка репозитория
@@ -105,6 +83,13 @@ func (o *Orchestrator) runStageWorker(ctx context.Context, stage config.StageCon
 			continue
 		}
 		fmt.Printf("runStageWorker: stage=%s, claimed task id=%s, groupID=%s\n", stage.Name, task.TaskID, task.GroupID)
+
+		// 2. Захват ресурсов с учетом возможного отзыва контекста
+		if err := o.resourceManager.AcquireWithContext(ctx, stage.Quota); err != nil {
+			fmt.Printf("runStageWorker: stage=%s, failed to acquire resources (context done): %v\n", stage.Name, err)
+			return // контекст завершён
+		}
+		fmt.Printf("runStageWorker: stage=%s, acquired quota=%d\n", stage.Name, stage.Quota)
 
 		// 4. мы уже взяли задачу, ошибки не произошло, поэтому освобождаем память в конце обработки
 		// помещаем весь код в анонимную функцию, чтобы после conntinue выполнился defer с освобождением памяти
