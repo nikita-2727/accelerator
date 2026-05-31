@@ -283,17 +283,17 @@ services:
 
   # Автоматическое обновление сертификатов (запускается периодически)
   # certbot-renew обновит сертификаты в томе, но nginx продолжит держать в памяти старые, поэтому перезагружаем его через docker Api
-  certbot-renew:
-    build:
-      context: .
-      dockerfile: certbot-renew.Dockerfile
-    container_name: accelerator-certbot-renew
-    volumes:
-      - certbot-etc:/etc/letsencrypt
-      - certbot-www:/var/www/certbot
-      - /var/run/docker.sock:/var/run/docker.sock   # даём доступ к Docker API
-    networks:
-      - accelerator-network
+  # certbot-renew:
+  #   build:
+  #     context: .
+  #     dockerfile: certbot-renew.Dockerfile
+  #   container_name: accelerator-certbot-renew
+  #   volumes:
+  #     - certbot-etc:/etc/letsencrypt
+  #     - certbot-www:/var/www/certbot
+  #     - /var/run/docker.sock:/var/run/docker.sock   # даём доступ к Docker API
+  #   networks:
+  #     - accelerator-network
 
   # сервис перезапустит контейнер после получения новых сертификатов, заставит nginx перечитать конфигурацию и сертификаты без разрыва соединений
   # reload-nginx:

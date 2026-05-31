@@ -1,68 +1,12 @@
-# проксирует запросы к приложению отджельно на бек, отдельно на фронт, также проксирует minio и перенапрвляет на https
-
-# Редирект с HTTP на HTTPS
-server {
-    listen 80;
-    server_name букволов-ии.рф www.букволов-ии.рф s3.букволов-ии.рф
-                xn----9sbda5aajj0ab4c.xn--p1ai
-                www.xn----9sbda5aajj0ab4c.xn--p1ai
-                s3.xn----9sbda5aajj0ab4c.xn--p1ai;
-
-    # Папка для проверки сертификатов
-    location /.well-known/acme-challenge/ {
-        root /var/www/certbot;
-    }
-
-    location / {
-        return 301 https://$host$request_uri;
-    }
-}
-
-# HTTP-бэкенд для прокси Яндекса (без SSL)
+# HTTP-бэкенд для прокси Яндекса (без SSL) — основной домен и www
 server {
     listen 8080;
-    server_name букволов-ии.рф www.букволов-ии.рф s3.букволов-ии.рф
-                xn----9sbda5aajj0ab4c.xn--p1ai
-                www.xn----9sbda5aajj0ab4c.xn--p1ai
-                s3.xn----9sbda5aajj0ab4c.xn--p1ai;
-
-    client_max_body_size ${MAX_BODY_SIZE}M;
-
-    location / {
-        proxy_pass http://frontend:80;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-
-    location /api/ {
-        proxy_pass http://app:8000/;
-        proxy_request_buffering off;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-}
-
-# Основной домен – фронтенд + API
-# на роутере проброшен 443 -> 8443, обходит блокировку провайдера
-server {
-    listen 443 ssl http2;
     server_name букволов-ии.рф www.букволов-ии.рф
                 xn----9sbda5aajj0ab4c.xn--p1ai
                 www.xn----9sbda5aajj0ab4c.xn--p1ai;
 
-    # SSL-сертификаты (укажи реальные пути после получения от Certbot)
-    ssl_certificate     /etc/letsencrypt/live/xn----9sbda5aajj0ab4c.xn--p1ai/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/xn----9sbda5aajj0ab4c.xn--p1ai/privkey.pem;
-    include             /etc/letsencrypt/options-ssl-nginx.conf;
-    ssl_dhparam         /etc/letsencrypt/ssl-dhparams.pem;
-
     client_max_body_size ${MAX_BODY_SIZE}M;
 
-    # Статика фронтенда
     location / {
         proxy_pass http://frontend:80;
         proxy_set_header Host $host;
@@ -71,10 +15,7 @@ server {
         proxy_set_header X-Forwarded-Proto $scheme;
     }
 
-    # Проксирование API на Go-бэкенд
     location /api/ {
-        # Если Nginx в Docker-сети, используй http://app:8000;
-        # Если Nginx на хосте, используй http://127.0.0.1:8000;
         proxy_pass http://app:8000/;
         proxy_request_buffering off;
         proxy_set_header Host $host;
@@ -84,30 +25,19 @@ server {
     }
 }
 
-# Поддомен для MinIO
+# HTTP-бэкенд для MinIO (поддомен s3)
 server {
-    listen 443 ssl http2;
-    server_name s3.букволов-ии.рф
-                s3.xn----9sbda5aajj0ab4c.xn--p1ai;
-
-    ssl_certificate     /etc/letsencrypt/live/xn----9sbda5aajj0ab4c.xn--p1ai/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/xn----9sbda5aajj0ab4c.xn--p1ai/privkey.pem;
-    include             /etc/letsencrypt/options-ssl-nginx.conf;
-    ssl_dhparam         /etc/letsencrypt/ssl-dhparams.pem;
+    listen 8080;
+    server_name s3.букволов-ии.рф s3.xn----9sbda5aajj0ab4c.xn--p1ai;
 
     client_max_body_size 0;
 
     location / {
-        proxy_pass http://minio:9000;   # внутри Docker-сети; иначе http://127.0.0.1:9000
-
-        # ★ Критически важно: прокидываем оригинальный Host, под который подписан Presigned URL
+        proxy_pass http://minio:9000;
         proxy_set_header Host $host;
-
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
-
         proxy_pass_request_headers on;
-        # При необходимости добавьте CORS-заголовки
     }
 }
