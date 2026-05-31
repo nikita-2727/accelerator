@@ -94,7 +94,7 @@ func (m *MinIOClient) GetPresignedGetPublicURL(ctx context.Context, objectKey st
 		return "", fmt.Errorf("presigned get: %w", err)
 	}
 
-	publicURL := strings.Replace(presignedURL.String(), "minio:9000", hostName, 1)
+	publicURL := strings.Replace(presignedURL.String(), "http://minio:9000", hostName, 1)
 
 	return publicURL, nil
 }
