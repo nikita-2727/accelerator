@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"strings"
 	"time"
 
@@ -235,6 +236,7 @@ func (r *TasksRepo) ClaimNextTask(ctx context.Context, statusPending, statusProc
 		if errors.Is(err, pgx.ErrNoRows) {
 			return nil, error_type.NewNotFound("no pending tasks")
 		}
+		slog.Error("ClaimNextTask SQL error", "err", err)
 		return nil, error_type.NewInternal(fmt.Errorf("select next tasks in queue: %w", err))
 	}
 
@@ -255,6 +257,7 @@ func (r *TasksRepo) ClaimNextTask(ctx context.Context, statusPending, statusProc
 	// обновляем статус задачи, чтобы другая горутина уже не могла ее взять
 	_, err = tx.Exec(ctx, `UPDATE tasks SET status = $1, started_at = NOW(), stage_entered_at = NOW() WHERE id = $2;`, statusProcessing, task.TaskID)
 	if err != nil {
+		slog.Error("ClaimNextTask SQL error", "err", err)
 		return nil, error_type.NewInternal(fmt.Errorf("update next tasks in queue: %w", err))
 	}
 
