@@ -3,7 +3,10 @@
 # Редирект с HTTP на HTTPS
 server {
     listen 80;
-    server_name букволов-ии.рф www.букволов-ии.рф s3.букволов-ии.рф;
+    server_name букволов-ии.рф www.букволов-ии.рф s3.букволов-ии.рф
+                xn----9sbda5aajj0ab4c.xn--p1ai
+                www.xn----9sbda5aajj0ab4c.xn--p1ai
+                s3.xn----9sbda5aajj0ab4c.xn--p1ai;
 
     # Папка для проверки сертификатов
     location /.well-known/acme-challenge/ {
@@ -18,7 +21,9 @@ server {
 # Основной домен – фронтенд + API
 server {
     listen 443 ssl http2;
-    server_name букволов-ии.рф www.букволов-ии.рф;
+    server_name букволов-ии.рф www.букволов-ии.рф
+                xn----9sbda5aajj0ab4c.xn--p1ai
+                www.xn----9sbda5aajj0ab4c.xn--p1ai
 
     # SSL-сертификаты (укажи реальные пути после получения от Certbot)
     ssl_certificate     /etc/letsencrypt/live/xn----9sbda5aajj0ab4c.xn--p1ai/fullchain.pem;
@@ -53,7 +58,8 @@ server {
 # Поддомен для MinIO
 server {
     listen 443 ssl http2;
-    server_name s3.букволов-ии.рф;
+    server_name s3.букволов-ии.рф
+                s3.xn----9sbda5aajj0ab4c.xn--p1ai;
 
     ssl_certificate     /etc/letsencrypt/live/xn----9sbda5aajj0ab4c.xn--p1ai/fullchain.pem;
     ssl_certificate_key /etc/letsencrypt/live/xn----9sbda5aajj0ab4c.xn--p1ai/privkey.pem;
