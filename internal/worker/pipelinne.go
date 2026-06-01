@@ -255,7 +255,7 @@ func (o *Orchestrator) runStageWorker(ctx context.Context, stage config.StageCon
 			if stage.NextStatus == string(domains.StatusDone) {
 				fmt.Printf("runStageWorker: stage=%s, task id=%s, finalizing result JSON\n", stage.Name, task.TaskID)
 				// 1. генерируем ссылку на диаризацию по ключу input
-				diarizeURL, err := o.minio.GetPresignedGetPublicURL(ctx, inputKey, o.cfg.AIWorkersTimeoutHour)
+				transcribeURL, err := o.minio.GetPresignedGetPublicURL(ctx, inputKey, o.cfg.AIWorkersTimeoutHour)
 				if err != nil {
 					// ставим у задачи статус ошибки и переходим на следующую итерацию цикла
 					if err := o.tasksRepo.UpdateTaskStatus(ctx, task.TaskID, stage.StatusError); err != nil {
@@ -279,7 +279,7 @@ func (o *Orchestrator) runStageWorker(ctx context.Context, stage config.StageCon
 
 				// 3. собираем ответ для результатов
 				resultData := map[string]string{
-					"diarize": diarizeURL,
+					"transcribe": transcribeURL,
 					"summary": summaryURL,
 				}
 

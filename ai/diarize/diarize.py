@@ -3,6 +3,7 @@ import uuid
 import json
 import requests
 import torch
+import torchaudio   # <-- добавь эту строку
 import sys
 import types
 import soundfile as sf

@@ -1,4 +1,4 @@
-# import os
+import os
 import uuid
 import requests
 import shutil
@@ -11,7 +11,7 @@ from contextlib import asynccontextmanager
 from audio_separator.separator import Separator
 
 # Возвращаем пути как в твоем compose
-models_dir = "/models"
+models_dir = "/app/models"
 ram_disk = "/dev/shm"
 
 @asynccontextmanager

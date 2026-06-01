@@ -36,7 +36,7 @@ func LoadStageConfig() *[]StageConfig {
 			StatusError:      string(domains.StatusErrorDiarize),
 			EndPoint:         getEnvString("DIARIZE_WORKER_URL", "diarize-worker/api/ai/diarize"),
 			Quota:            StageQuotas[string(domains.StatusProcessingDiarize)],
-			InputKeyFunc:     TranscriptKey,
+			InputKeyFunc:     DenoisedKey,
 			OutputKeyFunc:    DiarizationKey,
 		},
 		{
@@ -47,7 +47,7 @@ func LoadStageConfig() *[]StageConfig {
 			StatusError:      string(domains.StatusErrorTranscribe),
 			EndPoint:         getEnvString("TRANSCRIBE_WORKER_URL", "asr-worker/api/ai/transcribe"),
 			Quota:            StageQuotas[string(domains.StatusProcessingTranscribe)],
-			InputKeyFunc:     DenoisedKey,
+			InputKeyFunc:     DiarizationKey,
 			OutputKeyFunc:    TranscriptKey,
 		},
 		{
@@ -58,7 +58,7 @@ func LoadStageConfig() *[]StageConfig {
 			StatusError:      string(domains.StatusErrorSummarize),
 			EndPoint:         getEnvString("SUMMARY_WORKER_URL", "summarize-worker/api/ai/summarize"),
 			Quota:            StageQuotas[string(domains.StatusProcessingSummarize)],
-			InputKeyFunc:     DiarizationKey,
+			InputKeyFunc:     TranscriptKey,
 			OutputKeyFunc:    SummaryKey,
 		},
 	}

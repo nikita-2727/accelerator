@@ -115,7 +115,7 @@ services:
       dockerfile: Dockerfile
     container_name: accelerator-denoise-worker
     volumes: # один раз загружаем модель и сохраняем в valume, чтобы не загружать несколько раз заново
-    - denoise_models:/models
+    - denoise_models:/app/models
     expose:    # в локальной сети итак все приложения видят порты друг друга, это просто как документация
     - "${DENOISE_PORT}"   # просто подсказка, реальной безопасности не добавляет
     # Важно: поддержка GPU
