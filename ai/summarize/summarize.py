@@ -1,4 +1,5 @@
 import os
+import re          # Добавлен модуль для регулярных выражений
 import json
 import uuid
 import requests
@@ -103,16 +104,22 @@ def run_summarization(input_url: str, output_url: str, prompt: str, task_id: str
         )
         print("[INFO] Модель в памяти. Генерация отчета...")
 
+
         # 5. Инференс
         output = llm.create_chat_completion(
             messages=[
                 {"role": "system", "content": prompt},
-                {"role": "user", "content": f"Транскрипция:\n{transcript_text}"}
-            ],
+                {"role": "user", "content": f"Транскрипция:\n{transcript_text}"}],
             max_tokens=4096,
             temperature=0.2
         )
+        
+        # Получаем сырой текст от модели
         report_text = output['choices'][0]['message']['content']
+        
+        # ОЧИСТКА: Удаляем блок <think>...</think> и лишние пробелы/переносы по краям
+        report_text = re.sub(r'<think>.*?</think>', '', report_text, flags=re.DOTALL).strip()
+        
         # 6. Сохранение результата в JSON
         result_data = {
             "status": "success",
@@ -132,8 +139,22 @@ def run_summarization(input_url: str, output_url: str, prompt: str, task_id: str
         # ---------- ВЫГРУЗКА ИЗ VRAM И ОЧИСТКА ----------
         print("[INFO] Выгрузка LLM из VRAM...")
         if llm is not None:
-            del llm          # Удаляем ссылку на объект
-            gc.collect()     # Сборщик мусора триггерит освобождение контекста llama.cpp в VRAM
+            # 1. Закрываем контекст llama (освобождает основную память)
+            try:
+                llm.close()
+            except Exception as e:
+                print(f"[WARN] llm.close() failed: {e}")
+            # 2. Удаляем объект
+            del llm
+            # 3. Сборка мусора Python
+            gc.collect()
+            # 4. Очистка кэша CUDA (на случай, если llama.cpp использовал внутренний аллокатор)
+            try:
+                import torch
+                torch.cuda.empty_cache()
+                torch.cuda.synchronize()
+            except ImportError:
+                pass
             print("[INFO] VRAM успешно освобождена.")
 
         # Удаление временных файлов
