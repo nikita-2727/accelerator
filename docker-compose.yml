@@ -199,9 +199,9 @@ services:
       dockerfile: Dockerfile
     container_name: accelerator-summarize-worker
     environment:
-      LOCAL_MODEL_PATH: "/models/qwen-model.gguf" # путь внутри контейнера к локальной модели
+      LOCAL_MODEL_PATH: "/models/Qwen3.5-9B-Uncensored-HauhauCS-Aggressive-Q6_K.gguf" # путь внутри контейнера к локальной модели
     volumes:
-      - ./models:/models # папка с моделями на хосте
+      - ./ai/summarize/models:/models # папка с моделями на хосте
     expose:
       - "${SUMMARIZE_PORT}"
     deploy:

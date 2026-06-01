@@ -144,10 +144,21 @@ def run_transcription(input_url: str, denoised_url: str, output_url: str, task_i
         # ---------- ВЫГРУЗКА ИЗ VRAM И ОЧИСТКА ----------
         print("\n[INFO] Выгрузка модели ASR из VRAM...")
         if asr_model is not None:
+            try:
+                # Явно перемещаем модель на CPU, освобождая GPU-тензоры
+                asr_model.to('cpu')
+            except Exception as e:
+                print(f"[WARN] Не удалось переместить модель на CPU: {e}")
+            # Удаляем все атрибуты, чтобы разорвать ссылки на GPU-буферы
+            for attr in list(asr_model.__dict__.keys()):
+                try:
+                    delattr(asr_model, attr)
+                except Exception:
+                    pass
             del asr_model
             gc.collect()
-            if torch.cuda.is_available():
-                torch.cuda.empty_cache()
+            torch.cuda.empty_cache()
+            torch.cuda.synchronize()
             print("[INFO] VRAM успешно освобождена.")
 
         # Удаляем временные файлы
