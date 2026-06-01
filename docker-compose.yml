@@ -115,7 +115,7 @@ services:
       dockerfile: Dockerfile
     container_name: accelerator-denoise-worker
     volumes: # один раз загружаем модель и сохраняем в valume, чтобы не загружать несколько раз заново
-    - denoise_models:/app/models
+    - denoise_models:/models
     expose:    # в локальной сети итак все приложения видят порты друг друга, это просто как документация
     - "${DENOISE_PORT}"   # просто подсказка, реальной безопасности не добавляет
     # Важно: поддержка GPU
@@ -142,9 +142,9 @@ services:
     container_name: accelerator-diarize-worker
     environment:
       HF_TOKEN: ${DIARIZE_HF_TOKEN} # токен Hugging Face из .env
-      HF_HOME: "/app/models/huggingface" # кеш моделей
+      HF_HOME: "/models/huggingface" # кеш моделей
     volumes:
-      - diarize_models:/app/models # том для сохранения моделей
+      - diarize_models:/models # том для сохранения моделей
     expose:
       - "${DIARIZE_PORT}"
     deploy:
@@ -170,10 +170,10 @@ services:
       dockerfile: Dockerfile
     container_name: accelerator-asr-worker
     environment:
-      HF_HOME: "/app/models/huggingface"
-      MODELSCOPE_CACHE: "/app/models/modelscope"
+      HF_HOME: "/models/huggingface"
+      MODELSCOPE_CACHE: "/models/modelscope"
     volumes:
-      - asr_models:/app/models
+      - asr_models:/models
     expose:
       - "${TRANSCRIBE_PORT}"
     deploy:
@@ -199,9 +199,9 @@ services:
       dockerfile: Dockerfile
     container_name: accelerator-summarize-worker
     environment:
-      LOCAL_MODEL_PATH: "/app/models/qwen-model.gguf" # путь внутри контейнера к локальной модели
+      LOCAL_MODEL_PATH: "/models/qwen-model.gguf" # путь внутри контейнера к локальной модели
     volumes:
-      - ./models:/app/models # папка с моделями на хосте
+      - ./models:/models # папка с моделями на хосте
     expose:
       - "${SUMMARIZE_PORT}"
     deploy:

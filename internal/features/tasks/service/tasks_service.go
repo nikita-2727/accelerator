@@ -54,7 +54,7 @@ func (serv *TasksService) UploadTaskService(
 	}
 
 	task, err := serv.repo.CreateTask(
-		ctx, 
+		ctx,
 		taskID, userID, groupID,
 		taskName, taskDescription, meetingDate, patternID,
 		fileName, filePath, statusTask,
@@ -87,19 +87,19 @@ func (serv *TasksService) GetAudioTaskHandle(ctx context.Context, callerID, task
 	if !exists {
 		return "", time.Time{}, error_type.NewNotFound("Задача не найдена")
 	}
-	
+
 	// проверяем статус задачи (можно получить только если pending_denoise и выше)
 	if taskInfo.Status == string(domains.StatusProcessingUpload) {
 		return "", time.Time{}, error_type.NewNotFound("аудио еще не загружено")
 	}
 
 	// генерируем ссылку на файл
-	audioURL, err := serv.minio.GetPresignedGetPublicURL(ctx, taskInfo.FilePath, serv.cfg.LimitAudioURLMinuts)
+	audioURL, err := serv.minio.GetPresignedGetPublicURL(ctx, config.DenoisedKey(taskInfo.GroupID, taskID), serv.cfg.LimitAudioURLMinuts)
 	if err != nil {
 		// ставим у задачи статус ошибки и переходим на следующую итерацию цикла
 		return "", time.Time{}, error_type.NewInternal(fmt.Errorf("generate URL audio: %w", err))
 	}
-    // вычисляем, когда истечет ссылка
+	// вычисляем, когда истечет ссылка
 	expiresAt := time.Now().Add(serv.cfg.LimitAudioURLMinuts)
 
 	return audioURL, expiresAt, nil
@@ -199,8 +199,22 @@ func (serv *TasksService) GetTaskService(ctx context.Context, callerID, taskID s
 	// админ может менять в своих группах (проверка была выше), а креатор все
 	// если мы дошли до этого момента, значит мы админ в группе, либа креатор
 	// можем изменять и удалять все, которые завершили обработку
-	if userInfo.Role == "admin" || userInfo.Role == "creator" {
+	if userInfo.Role == "creator" {
 		if taskInfo.Status == string(domains.StatusDone) {
+			taskInfo.ChangeFlag = true
+		} else {
+			taskInfo.ChangeFlag = false
+		}
+	}
+
+	// еще проверка, если это админ, то он не может менять таски креатора
+	// проверяем, если создатель задачи это креатор, то мы не можем изменять ее
+	if userInfo.Role == "admin" {
+		creatorTaskInfo, err := serv.repo.SelectUserByID(ctx, taskInfo.UserID)
+		if err != nil {
+			return nil, err
+		}
+		if creatorTaskInfo.Role != "creator" && taskInfo.Status == string(domains.StatusDone) {
 			taskInfo.ChangeFlag = true
 		} else {
 			taskInfo.ChangeFlag = false
@@ -260,14 +274,29 @@ func (serv *TasksService) GetAllTaskInGroupService(ctx context.Context, callerID
 	}
 
 	// креатор или админ в своей группе могут менять все, которые завершенные
-	if userInfo.Role == "admin" || userInfo.Role == "creator" {
+	if userInfo.Role == "creator" {
 		for index := range *tasksInfo {
 			if (*tasksInfo)[index].Status == string(domains.StatusDone) {
 				(*tasksInfo)[index].ChangeFlag = true
 			} else {
 				(*tasksInfo)[index].ChangeFlag = false
 			}
+		}
+	}
 
+	// еще проверка, если это админ, то он не может менять таски креатора
+	// проверяем, если создатель задачи это креатор, то мы не можем изменять ее
+	if userInfo.Role == "admin" {
+		creatorID, err := serv.repo.SelectCreatorID(ctx)
+		if err != nil {
+			return nil, 0, err
+		}
+		for index := range *tasksInfo {
+			if (*tasksInfo)[index].UserID != creatorID && (*tasksInfo)[index].Status == string(domains.StatusDone) {
+				(*tasksInfo)[index].ChangeFlag = true
+			} else {
+				(*tasksInfo)[index].ChangeFlag = false
+			}
 		}
 	}
 
@@ -325,6 +354,16 @@ func (serv *TasksService) EditTaskService(ctx context.Context, callerID, taskID 
 			return nil, error_type.NewNotFound("Задача не найдена")
 		}
 
+		// проверяем, если создатель задачи это креатор, то мы не можем изменять ее
+		creatorTaskInfo, err := serv.repo.SelectUserByID(ctx, taskInfo.UserID)
+		if err != nil {
+			return nil, err
+		}
+
+		if creatorTaskInfo.Role == "creator" {
+			return nil, error_type.NewForbidden()
+		}
+
 		// пользователь может изменять только созданую им задачу
 		if userInfo.Role == "user" {
 			if taskInfo.UserID != userInfo.ID {
@@ -375,6 +414,16 @@ func (serv *TasksService) DeleteTaskService(ctx context.Context, callerID, taskI
 		}
 		if !exists {
 			return error_type.NewNotFound("Задача не найдена")
+		}
+
+		// проверяем, если создатель задачи это креатор, то мы не можем удалять ее
+		creatorTaskInfo, err := serv.repo.SelectUserByID(ctx, taskInfo.UserID)
+		if err != nil {
+			return err
+		}
+
+		if creatorTaskInfo.Role == "creator" {
+			return error_type.NewForbidden()
 		}
 
 		// пользователь может удалять только созданую им задачу

@@ -8,6 +8,7 @@ import (
 	"accelerator/internal/tools"
 	"bytes"
 	"encoding/json"
+	"io"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -89,9 +90,8 @@ func (trans *PatternsTransport) CreatePatternHandler(w http.ResponseWriter, r *h
 				return
 			}
 		}
-		
-	}
 
+	}
 
 	// вызыв сервиса для создания шаблона
 	newPattern, err := trans.serv.CreatePatternService(
@@ -354,14 +354,29 @@ func (trans *PatternsTransport) EditPattern(w http.ResponseWriter, r *http.Reque
 		tools.WriteError(w, error_type.NewBadRequest("некорректный ID шаблона"))
 		return
 	}
+	// читаем тело один раз, чтобы потом отличить отсутствие ключа от явного null
+	bodyBytes, err := io.ReadAll(r.Body)
+	if err != nil {
+		tools.WriteError(w, error_type.NewBadRequest("не удалось прочитать тело запроса"))
+		return
+	}
+
 	// получаем ДТО и валидируем от пользователя
 	var newRequest dto.EditPatternRequestDTO
-	if err := json.NewDecoder(r.Body).Decode(&newRequest); err != nil {
+	if err := json.Unmarshal(bodyBytes, &newRequest); err != nil {
 		tools.WriteError(w, error_type.NewBadRequest("не удалось распарсить json"))
 		return
 	}
 	if err := trans.validate.Struct(newRequest); err != nil {
 		tools.WriteError(w, error_type.NewBadRequest("ошибка во входных данных"))
+		return
+	}
+
+	// какие ключи реально пришли в запросе (нужно, чтобы явный null/[]/{}
+	// очищал additional_prompt, а отсутствие ключа — нет)
+	var rawFields map[string]json.RawMessage
+	if err := json.Unmarshal(bodyBytes, &rawFields); err != nil {
+		tools.WriteError(w, error_type.NewBadRequest("не удалось распарсить json"))
 		return
 	}
 
@@ -388,45 +403,46 @@ func (trans *PatternsTransport) EditPattern(w http.ResponseWriter, r *http.Reque
 		}
 		updateData["summary_prompt"] = *newRequest.SummaryPrompt
 	}
-	// дополнительного промпта также может не быть
-	if newRequest.AdditionalPrompt != nil {
-		if len(*newRequest.AdditionalPrompt) == 0 || bytes.Equal(bytes.TrimSpace(*newRequest.AdditionalPrompt), []byte("null")) {
-			newRequest.AdditionalPrompt = nil
+	// additional_prompt обрабатываем, ТОЛЬКО если ключ реально присутствует в запросе.
+	// Явный null / [] / {} -> очищаем поле (NULL в БД).
+	if raw, ok := rawFields["additional_prompt"]; ok {
+		trimmed := bytes.TrimSpace(raw)
+		if len(trimmed) == 0 || bytes.Equal(trimmed, []byte("null")) {
+			updateData["additional_prompt"] = nil // null -> NULL в БД
 		} else {
 			// если передавали, проверяем, что пришел валидный json в additional_prompt
 			var tmp interface{}
-			if err := json.Unmarshal(*newRequest.AdditionalPrompt, &tmp); err != nil {
+			if err := json.Unmarshal(raw, &tmp); err != nil {
 				tools.WriteError(w, error_type.NewBadRequest("невалидный json в additional_prompt"))
 				return
 			}
 			// Разрешаем только объект или массив
 			switch v := tmp.(type) {
 			case map[string]interface{}:
-				// нормализуем пустой объект {} до nil, чтобы в бд было NULL
+				// пустой объект {} -> NULL
 				if len(v) == 0 {
-					newRequest.AdditionalPrompt = nil // пустой объект -> NULL
+					updateData["additional_prompt"] = nil
+				} else {
+					tools.WriteError(w, error_type.NewBadRequest("additional_prompt должен быть массивом [] или null"))
+					return
 				}
 			case []interface{}:
-				// нормализуем пустой объект [] до nil, чтобы в бд было NULL
 				if len(v) == 0 {
-					newRequest.AdditionalPrompt = nil // пустой массив -> NULL
+					// пустой массив [] -> NULL
+					updateData["additional_prompt"] = nil
+				} else {
+					// непустой массив — проверяем структуру и записываем как есть
+					if err := tools.ValidateAdditionalPrompt(raw); err != nil {
+						tools.WriteError(w, error_type.NewBadRequest(err.Error()))
+						return
+					}
+					updateData["additional_prompt"] = raw
 				}
 			default:
 				tools.WriteError(w, error_type.NewBadRequest("additional_prompt должен быть массивом [] или null"))
 				return
 			}
 		}
-
-		// если json был не пустой, проверяем, что он соответствует нужному виду
-		if newRequest.AdditionalPrompt != nil {
-			if err := tools.ValidateAdditionalPrompt(*newRequest.AdditionalPrompt); err != nil {
-				tools.WriteError(w, error_type.NewBadRequest(err.Error()))
-				return
-			}
-		}
-
-		// если все ок, записываем
-		updateData["additional_prompt"] = *newRequest.AdditionalPrompt
 	}
 
 	// Проверка, что есть что обновлять

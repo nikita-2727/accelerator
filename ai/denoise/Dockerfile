@@ -20,13 +20,13 @@ RUN python3.12 -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
 # Ставим ночную сборку PyTorch под свежую архитектуру GPU
-# RUN pip install --pre torch torchvision torchaudio --index-url https://download.pytorch.org/whl/nightly/cu128
+RUN pip install --pre torch torchvision torchaudio --index-url https://download.pytorch.org/whl/nightly/cu128
 
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Скачиваем веса модели прямо в папку /app/models на этапе сборки
-# RUN mkdir -p /app/models && \
-#     python3.12 -c "from audio_separator.separator import Separator; Separator(model_file_dir='/app/models').download_model_files('model_bs_roformer_ep_317_sdr_12.9755.ckpt')"
+RUN mkdir -p /app/models && \
+    python3.12 -c "from audio_separator.separator import Separator; Separator(model_file_dir='/app/models').download_model_files('model_bs_roformer_ep_317_sdr_12.9755.ckpt')"
 
 COPY . .

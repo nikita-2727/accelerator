@@ -21,7 +21,7 @@ func LoadStageConfig() *[]StageConfig {
 			Name:             "denoise",
 			StatusPending:    string(domains.StatusPendingDenoise),
 			StatusProcessing: string(domains.StatusProcessingDenoise),
-			NextStatus:       string(domains.StatusPendingTranscribe),
+			NextStatus:       string(domains.StatusPendingDiarize),
 			StatusError:      string(domains.StatusErrorDenoise),
 			EndPoint:         getEnvString("DENOISE_WORKER_URL", "denoise-worker/api/ai/denoise"),
 			Quota:            StageQuotas[string(domains.StatusProcessingDenoise)],

@@ -682,3 +682,17 @@ func (repo *TasksRepo) HasPendingTasks(ctx context.Context, status string) (bool
 	}
 	return exists, nil
 }
+
+
+// возвращает ID единственного креатора
+func (repo *TasksRepo) SelectCreatorID(ctx context.Context) (string, error) {
+	const query = `SELECT id FROM users WHERE role = 'creator'`
+	var creatorID string
+	err := repo.pool.QueryRow(ctx, query).Scan(&creatorID)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return "", error_type.NewInternal(fmt.Errorf("creator ID not found"))
+	} else if err != nil {
+		return "", error_type.NewInternal(fmt.Errorf("select creator ID: %w", err))
+	}
+	return creatorID, nil
+}

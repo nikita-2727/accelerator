@@ -1,7 +1,7 @@
-# onnxruntime-gpu
-# audio-separator[gpu]>=0.44.2
-# soundfile
-# numpy
+onnxruntime-gpu
+audio-separator[gpu]>=0.44.2
+soundfile
+numpy
 
 fastapi
 uvicorn[standard]
