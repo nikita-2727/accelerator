@@ -19,7 +19,7 @@ services:
       - accelerator-network
 
   minio:
-    image: minio/minio:latest
+    image: quay.io/minio/minio:latest
     container_name: accelerator-minio
     command: server /data --console-address ":9001"
     environment: # образ сам создаст пользователя с таким паролем
@@ -28,9 +28,11 @@ services:
       MINIO_SERVER_URL: "${MINIO_SERVER_URL}" # чтобы генерировать публичные ссылки с моим вдресом, а не minio:9000
       MINIO_BROWSER_CORS: "${CLIENT_URL}" # чтобы клиент мог взаимодействовать с s3
       MINIO_API_CORS_ALLOW_ORIGIN: "${CLIENT_URL}" # ставим корсы для взаимодействия с бакетом
-    expose: # 9000 - порт самого клиента minio, 9001 - веб-консоль небольшой графический интерфейс
-      - "${S3_CLIENT_PORT}"
-      - "${S3_CONSOLE_PORT}"
+      MINIO_BROWSER_HSTS_SECONDS: "0" # отключаем для нормальной работы без ssl
+    ports: # 9000 - порт самого клиента minio, 9001 - веб-консоль небольшой графический интерфейс
+    # ДЛЯ ЛОКАЛКИ ПРОКИДЫВАЕМ ПОРТЫ, В ПРОДЕ ЧЕРЕЗ nginx, а тут expose !!!!!!!!
+      - "${S3_CLIENT_PORT}:${S3_CLIENT_PORT}"
+      - "${S3_CONSOLE_PORT}:${S3_CONSOLE_PORT}"
     volumes: # также прокидываем общую папку, чтобы данные не удалялись
       - minio_data:/data
     networks:
@@ -114,19 +116,8 @@ services:
       context: ./ai/denoise   # путь к папке с Dockerfile и кодом
       dockerfile: Dockerfile
     container_name: accelerator-denoise-worker
-    volumes: # один раз загружаем модель и сохраняем в valume, чтобы не загружать несколько раз заново
-    - denoise_models:/app/models
     expose:    # в локальной сети итак все приложения видят порты друг друга, это просто как документация
     - "${DENOISE_PORT}"   # просто подсказка, реальной безопасности не добавляет
-    # Важно: поддержка GPU
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: 1
-              capabilities: [gpu]
-
     command: uvicorn denoise:app --host 0.0.0.0 --port ${DENOISE_PORT} # команда запуска
     restart: unless-stopped
     depends_on:
@@ -140,21 +131,8 @@ services:
       context: ./ai/diarize
       dockerfile: Dockerfile
     container_name: accelerator-diarize-worker
-    environment:
-      HF_TOKEN: ${DIARIZE_HF_TOKEN} # токен Hugging Face из .env
-      HF_HOME: "/models/huggingface" # кеш моделей
-    volumes:
-      - diarize_models:/models # том для сохранения моделей
     expose:
       - "${DIARIZE_PORT}"
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: 1
-              capabilities: [gpu]
-
     command: uvicorn diarize:app --host 0.0.0.0 --port ${DIARIZE_PORT} # команда запуска
     restart: unless-stopped
     depends_on:
@@ -169,21 +147,8 @@ services:
       context: ./ai/transcribe
       dockerfile: Dockerfile
     container_name: accelerator-asr-worker
-    environment:
-      HF_HOME: "/models/huggingface"
-      MODELSCOPE_CACHE: "/models/modelscope"
-    volumes:
-      - asr_models:/models
     expose:
       - "${TRANSCRIBE_PORT}"
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: 1
-              capabilities: [gpu]
-
     command: uvicorn transcribe:app --host 0.0.0.0 --port ${TRANSCRIBE_PORT} # команда запуска
     restart: unless-stopped
     depends_on:
@@ -198,20 +163,8 @@ services:
       context: ./ai/summarize
       dockerfile: Dockerfile
     container_name: accelerator-summarize-worker
-    environment:
-      LOCAL_MODEL_PATH: "/models/Qwen3.5-9B-Uncensored-HauhauCS-Aggressive-Q6_K.gguf" # путь внутри контейнера к локальной модели
-    volumes:
-      - ./ai/summarize/models:/models # папка с моделями на хосте
     expose:
-      - "${SUMMARIZE_PORT}"
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: 1
-              capabilities: [gpu]
-    
+      - "${SUMMARIZE_PORT}" 
     command: uvicorn summarize:app --host 0.0.0.0 --port ${SUMMARIZE_PORT} # команда запуска
     restart: unless-stopped
     depends_on:
@@ -261,6 +214,9 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+
+
+# ДЛЯ SSL И АВТОПРОДЛЕНИЯ СЕРТИФИКАТА, ПОТОМ ВПЕНДЮРИТЬ В ПРОД
 
   # Сервис удалит временные сертификаты и создаст новые
   # certbot-init:
@@ -312,9 +268,6 @@ services:
 volumes: # используем именованные тома, а не привязка к конкретной папке
   postgres_data:
   minio_data:
-  denoise_models:
-  diarize_models:
-  asr_models:
 
   certbot-etc:
   certbot-www:

@@ -55,7 +55,7 @@ func NewMinIOClient(endpoint, accessKey, secretKey, bucket string, useSSL bool, 
 
 	publicClient, err := minio.New(publicHost, &minio.Options{
 		Creds:  credentials.NewStaticV4(accessKey, secretKey, ""),
-		Secure: true, // потому что используем https
+		Secure: useSSL,
 		Region: "us-east-1",
 	})
 	if err != nil {

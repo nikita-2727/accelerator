@@ -1,15 +1,12 @@
 import os
-import re          # Добавлен модуль для регулярных выражений
 import json
 import uuid
 import requests
-import gc          # Сборщик мусора
 import asyncio     # Асинхронность
-import glob        # Для поиска .gguf файлов
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from contextlib import asynccontextmanager
-from llama_cpp import Llama
+from time import sleep
 
 
 # ---------- Вспомогательные функции ----------
@@ -42,11 +39,53 @@ def prepare_transcript(json_filepath):
 
     return "\n".join(transcript_lines)
 
+
+# ---------- Шаблон мок-отчёта ----------
+def generate_mock_report(transcript_text: str, prompt: str) -> str:
+    """
+    Генерирует псевдо-отчёт в стиле реальной LLM.
+    Возвращает текст в формате Executive Summary / Decisions / Action Items.
+    """
+    # Считаем количество реплик и уникальных спикеров
+    lines = [l for l in transcript_text.split("\n") if l.strip()]
+    speakers = set()
+    for line in lines:
+        if ":" in line:
+            speakers.add(line.split(":", 1)[0])
+
+    num_replies = len(lines)
+    num_speakers = len(speakers) if speakers else 1
+
+    report = f"""1. Executive Summary:
+        В ходе совещания с участием {num_speakers} спикер(ов) было зафиксировано {num_replies} реплик. 
+        Основное обсуждение касалось текущих рабочих задач, сроков их выполнения и распределения ответственности между участниками. 
+        Участники согласовали ключевые направления работы и обсудили вопросы, требующие дополнительной проработки. 
+        Отмечена необходимость уточнения ряда деталей у внешних заказчиков и подготовки промежуточных отчётов.
+
+        2. Decisions Made:
+        - Согласовано продолжение работы по текущему проекту в установленные сроки.
+        - Принято решение зафиксировать обсуждаемые договорённости в протоколе совещания.
+        - Одобрено выделение дополнительных ресурсов на приоритетные задачи.
+        - Утверждён план подготовки отчётности к концу недели.
+
+        3. Action Items:
+        - Подготовить итоговый отчёт по текущей задаче — ответственный: SPEAKER_00, срок: до конца недели.
+        - Уточнить сроки и требования у заказчика — ответственный: SPEAKER_01, срок: в течение 2 рабочих дней.
+        - Подготовить предложения по бюджету — ответственный: SPEAKER_02, срок: до следующего совещания.
+        - Сформировать протокол встречи и разослать участникам — ответственный: SPEAKER_00, срок: сегодня.
+
+        Примечание: Данный отчёт сгенерирован автоматически в режиме мок-тестирования.
+        """
+    return report.strip()
+
+
+
+
 # ---------- Жизненный цикл ----------
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Модель больше не грузим при старте
-    print("[INFO] Сервер саммаризации запущен. VRAM свободна. Ожидание запросов...")
+    print("[INFO] Мок-сервер саммаризации запущен. Ожидание запросов...")
     yield
 
 app = FastAPI(lifespan=lifespan)
@@ -65,102 +104,48 @@ async def check_ready():
 def run_summarization(input_url: str, output_url: str, prompt: str, task_id: str):
     local_input = f"/tmp/{task_id}_transcript.json"
     local_output = f"/tmp/{task_id}_summary.json"
+
+    # ПРОСТО РАНДОМНЫЙ ОТЧЕТ ЗАКИДЫВАЕМ ШАБЛОННЫЙ
     
-    llm = None
+    # 1. Скачиваем стенограмму
+    print(f"[INFO] Скачивание стенограммы {input_url}")
+    r = requests.get(input_url, stream=True)
+    r.raise_for_status()
+    with open(local_input, 'wb') as f:
+        for chunk in r.iter_content(chunk_size=8192):
+            f.write(chunk)
 
-    try:
-        # 1. Скачиваем стенограмму
-        print(f"[INFO] Скачивание стенограммы {input_url}")
-        r = requests.get(input_url, stream=True)
-        r.raise_for_status()
-        with open(local_input, 'wb') as f:
-            for chunk in r.iter_content(chunk_size=8192):
-                f.write(chunk)
+    # 2. Подготовка текста
+    transcript_text = prepare_transcript(local_input)
+    print("[INFO] Текст подготовлен.")
 
-        # 2. Подготовка текста
-        transcript_text = prepare_transcript(local_input)
-        print("[INFO] Текст подготовлен.")
+    # 3. Генерация мок-отчёта
+    print(f"[INFO] Генерация мок-отчёта (промпт: {prompt[:80]}...)")
+    report_text = generate_mock_report(transcript_text, prompt)
 
-        # 3. Динамический поиск модели .gguf (заменяет логику start.sh)
-        model_path = os.environ.get("LOCAL_MODEL_PATH", "./models")
-        
-        # Если путь это папка или не указан точный .gguf файл — ищем сами
-        if os.path.isdir(model_path) or not model_path.endswith(".gguf"):
-            gguf_files = glob.glob("./models/*.gguf")
-            if not gguf_files:
-                raise RuntimeError(f"ОШИБКА: Ни один файл .gguf не найден в папке /models!")
-            model_path = gguf_files[0]
-            print(f"[INFO] Автоматически найдена модель: {model_path}")
+    # 4. Сохранение результата в JSON
+    result_data = {
+        "status": "success",
+        "analysis_report": report_text
+    }
+    with open(local_output, 'w', encoding='utf-8') as f:
+        json.dump(result_data, f, ensure_ascii=False, indent=2)
 
-        # 4. Загрузка LLM в VRAM
-        print(f"[INFO] Загрузка LLM из {model_path} в VRAM...")
-        llm = Llama(
-            model_path=model_path,
-            n_ctx=16384,
-            n_gpu_layers=-1,      # Все слои отправляем на GPU
-            flash_attn=True,
-            chat_format="chatml",
-            verbose=False
-        )
-        print("[INFO] Модель в памяти. Генерация отчета...")
+    # ЖДЕМ 
+    sleep(10)
+
+    # 5. Загрузка результата
+    print(f"[INFO] Отправка саммари...")
+    with open(local_output, 'rb') as fout:
+        resp = requests.put(output_url, data=fout)
+        resp.raise_for_status()
+    print("[SUCCESS] Суммаризация завершена.")
 
 
-        # 5. Инференс
-        output = llm.create_chat_completion(
-            messages=[
-                {"role": "system", "content": prompt},
-                {"role": "user", "content": f"Транскрипция:\n{transcript_text}"}],
-            max_tokens=4096,
-            temperature=0.2
-        )
-        
-        # Получаем сырой текст от модели
-        report_text = output['choices'][0]['message']['content']
-        
-        # ОЧИСТКА: Удаляем блок <think>...</think> и лишние пробелы/переносы по краям
-        report_text = re.sub(r'<think>.*?</think>', '', report_text, flags=re.DOTALL).strip()
-        
-        # 6. Сохранение результата в JSON
-        result_data = {
-            "status": "success",
-            "analysis_report": report_text
-        }
-        with open(local_output, 'w', encoding='utf-8') as f:
-            json.dump(result_data, f, ensure_ascii=False, indent=2)
-
-        # 7. Загрузка результата
-        print(f"[INFO] Отправка саммари...")
-        with open(local_output, 'rb') as fout:
-            resp = requests.put(output_url, data=fout)
-            resp.raise_for_status()
-        print("[SUCCESS] Суммаризация завершена.")
-
-    finally:
-        # ---------- ВЫГРУЗКА ИЗ VRAM И ОЧИСТКА ----------
-        print("[INFO] Выгрузка LLM из VRAM...")
-        if llm is not None:
-            # 1. Закрываем контекст llama (освобождает основную память)
-            try:
-                llm.close()
-            except Exception as e:
-                print(f"[WARN] llm.close() failed: {e}")
-            # 2. Удаляем объект
-            del llm
-            # 3. Сборка мусора Python
-            gc.collect()
-            # 4. Очистка кэша CUDA (на случай, если llama.cpp использовал внутренний аллокатор)
-            try:
-                import torch
-                torch.cuda.empty_cache()
-                torch.cuda.synchronize()
-            except ImportError:
-                pass
-            print("[INFO] VRAM успешно освобождена.")
-
-        # Удаление временных файлов
-        for f in [local_input, local_output]:
-            if os.path.exists(f):
-                os.remove(f)
+    # Удаление временных файлов
+    for f in [local_input, local_output]:
+        if os.path.exists(f):
+            os.remove(f)
 
 @app.post("/summarize")
 async def summarize(request: SummarizeRequest):
