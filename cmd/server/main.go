@@ -1,20 +1,23 @@
 package main
 
 import (
-	"accelerator/internal/core/config"
-	"accelerator/internal/core/logger"
-	"accelerator/internal/core/server"
-	"accelerator/internal/core/storage"
-	adminRepository "accelerator/internal/features/admin/repository"
-	authRepository "accelerator/internal/features/auth/repository"
-	patternsRepository "accelerator/internal/features/patterns/repository"
-	tasksRepository "accelerator/internal/features/tasks/repository"
-	"accelerator/internal/tools"
-	"accelerator/internal/worker"
 	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
+	"context"
+	"log/slog"
+
+	"accelerator/internal/core/config"
+	"accelerator/internal/core/event"
+	"accelerator/internal/core/logger"
+	"accelerator/internal/core/server"
+	"accelerator/internal/core/storage"
+
+	adminRepository "accelerator/internal/features/admin/repository"
+	authRepository "accelerator/internal/features/auth/repository"
+	patternsRepository "accelerator/internal/features/patterns/repository"
+	tasksRepository "accelerator/internal/features/tasks/repository"
 
 	adminService "accelerator/internal/features/admin/service"
 	authService "accelerator/internal/features/auth/service"
@@ -25,8 +28,9 @@ import (
 	authTransport "accelerator/internal/features/auth/transport"
 	patternsTransport "accelerator/internal/features/patterns/transport"
 	tasksTransport "accelerator/internal/features/tasks/transport"
-	"context"
-	"log/slog"
+
+	"accelerator/internal/tools"
+	"accelerator/internal/worker"
 
 	"github.com/go-playground/validator/v10"
 
@@ -92,6 +96,8 @@ func main() {
 
 	// инициализируем все модули приложения
 
+	eventPublisher := event.NewHTTPPublisher(cfg.NotificationServiceURL) 
+
 	adminRepo := adminRepository.NewAdminRepository(pool)
 	adminServ := adminService.NewAdminService(adminRepo, cfg)
 	adminTrans := adminTransport.NewAdminTransport(adminServ, validate)
@@ -122,18 +128,43 @@ func main() {
 		cancel()
 	}()
 
-	// инициализация менеджера ресурсов
-	resourceManager := worker.NewResourceManager(
-		cfg.TotalVRAMGB,
-		cfg.TotalRAMGB,
-	)
-	// создаем экземпляр конфига для основного воркера
-	orchestrator := worker.NewOrchestrator(
-		tasksRepo, minioClient, cfg, resourceManager, stageConfig,
-	)
 
-	// запускаем основной цикл обработки для всех статусов и передаем контекст
-	orchestrator.Run(pipelineContext)
+	// todo: пофиксить импорт этого флага для дев мода
+	cfg.DisableWorker = true;
+
+	// точка включения воркеров, если в .env будет выставлен флаг DISABLE_WORKER=true, то воркеры не будут запускаться
+	if cfg.DisableWorker == true {
+		slog.Info("Workers are disabled because of DEVELOPMENT MODE")
+
+		// тестовый ивент для проверки работы микросервиса уведомлений
+		evt := event.NewTaskCompletedEvent("user123", "test")
+
+		go func() {
+			if err := eventPublisher.Publish(context.Background(), evt); err != nil {
+				slog.Error("Failed to publish test event", "err", err)
+			} else {
+				slog.Info("Test event published successfully to microservice!")
+			}
+		}()
+
+	} else {
+		slog.Info("Starting workers pipeline...")
+
+		// инициализация менеджера ресурсов
+		resourceManager := worker.NewResourceManager(
+			cfg.TotalVRAMGB,
+			cfg.TotalRAMGB,
+		)
+		// создаем экземпляр конфига для основного воркера
+		orchestrator := worker.NewOrchestrator(
+			tasksRepo, minioClient, cfg, resourceManager, stageConfig,
+		)
+
+		// запускаем основной цикл обработки для всех статусов и передаем контекст
+		orchestrator.Run(pipelineContext)
+	}
+
+
 
 	if err := server.StartNewChiServer(adminTrans, authTrans, patternsTrans, tasksTrans, cfg); err != nil {
 		slog.Error("Ошибка при работе HTTP сервера:", "err", err)

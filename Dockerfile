@@ -12,7 +12,7 @@ RUN go mod download
 COPY . .
 
 # Собираем статически связанный бинарный файл
-RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o main ./cmd/...
+RUN CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o /app/server ./cmd/server
 
 # Используем минимальный образ для запуска
 FROM alpine:latest
@@ -23,10 +23,10 @@ RUN apk --no-cache add ca-certificates ffmpeg
 WORKDIR /root/
 
 # Копируем бинарный файл из этапа сборки
-COPY --from=builder /app/main .
+COPY --from=builder /app/server .
 
 # документация, просто инфа для разработчика, необязательно
 EXPOSE 8000
 
 # Команда для запуска
-CMD ["./main"]
+CMD ["./server"]

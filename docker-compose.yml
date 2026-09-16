@@ -98,6 +98,9 @@ services:
       DIARIZE_WORKER_URL: "${DIARIZE_WORKER_URL}"   # для этапа diarize
       TRANSCRIBE_WORKER_URL: "${TRANSCRIBE_WORKER_URL}" # для этапа transcribe
       SUMMARY_WORKER_URL: "${SUMMARY_WORKER_URL}"   # для этапа summarize
+
+      # === URL-адреса микросервисов ===
+      NOTIFICATION_SERVICE_URL: "${NOTIFICATION_SERVICE_URL}" # Config.NotificationServiceURL
     volumes: # пробрасываем папку с логами напрямую в докер контейнер 
       - ./logs:/root/logs
     expose:
@@ -166,6 +169,21 @@ services:
     expose:
       - "${SUMMARIZE_PORT}" 
     command: uvicorn summarize:app --host 0.0.0.0 --port ${SUMMARIZE_PORT} # команда запуска
+    restart: unless-stopped
+    depends_on:
+      app:
+        condition: service_started
+    networks:
+      - accelerator-network
+
+
+  notification-service:
+    build:
+      context: .
+      dockerfile: Dockerfile.notification
+    container_name: accelerator-notification-service
+    expose:
+      - "${NOTIFICATION_SERVICE_PORT}"
     restart: unless-stopped
     depends_on:
       app:
