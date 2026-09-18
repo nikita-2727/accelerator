@@ -6,8 +6,8 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
-	"accelerator/internal/notification/transport"
 	"accelerator/internal/core/config"
+	"accelerator/internal/microservices/notification/transport"
 )
 
 func main() {

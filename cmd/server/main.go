@@ -1,12 +1,13 @@
 package main
 
 import (
+	"context"
 	"fmt"
+	"log/slog"
 	"os"
 	"os/signal"
 	"syscall"
-	"context"
-	"log/slog"
+	"time"
 
 	"accelerator/internal/core/config"
 	"accelerator/internal/core/event"
@@ -140,6 +141,8 @@ func main() {
 		evt := event.NewTaskCompletedEvent("user123", "test")
 
 		go func() {
+			time.Sleep(10 * time.Second)
+
 			if err := eventPublisher.Publish(context.Background(), evt); err != nil {
 				slog.Error("Failed to publish test event", "err", err)
 			} else {
