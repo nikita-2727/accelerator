@@ -5,7 +5,7 @@ RUN apk add --no-cache git ca-certificates
 
 WORKDIR /app
 
-# видимо какая-то оптима для докера
+# копируем go.mod и go.sum для скачивания зависимостей
 COPY go.mod go.sum ./
 RUN go mod download
 

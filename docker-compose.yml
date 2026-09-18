@@ -183,7 +183,7 @@ services:
   notification-service:
     build:
       context: .
-      dockerfile: Dockerfile.notification
+      dockerfile: ./internal/microservices/notification/Dockerfile
     container_name: accelerator-notification-service
     expose:
       - "${NOTIFICATION_SERVICE_PORT}"
