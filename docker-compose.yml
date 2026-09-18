@@ -101,6 +101,9 @@ services:
 
       # === URL-адреса микросервисов ===
       NOTIFICATION_SERVICE_URL: "${NOTIFICATION_SERVICE_URL}" # Config.NotificationServiceURL
+      NOTIFICATION_SERVICE_PORT: "${NOTIFICATION_SERVICE_PORT}" # Config.NotificationServicePort
+      DISABLE_WORKER: "${DISABLE_WORKER}" # Config.DisableWorker (true/false)
+    restart: unless-stopped
     volumes: # пробрасываем папку с логами напрямую в докер контейнер 
       - ./logs:/root/logs
     expose:

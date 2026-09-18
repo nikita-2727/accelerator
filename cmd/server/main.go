@@ -129,10 +129,6 @@ func main() {
 		cancel()
 	}()
 
-
-	// todo: пофиксить импорт этого флага для дев мода
-	cfg.DisableWorker = true;
-
 	// точка включения воркеров, если в .env будет выставлен флаг DISABLE_WORKER=true, то воркеры не будут запускаться
 	if cfg.DisableWorker == true {
 		slog.Info("Workers are disabled because of DEVELOPMENT MODE")

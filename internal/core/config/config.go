@@ -76,8 +76,9 @@ func LoadConfig() *Config {
 		TotalVRAMGB: getEnvInt("TOTAL_VRAM_GB", 12),
 		TotalRAMGB:  getEnvInt("TOTAL_RAM_GB", 16),
 
-		DisableWorker: getEnvBool("DISABLE_WORKER", false),
+		DisableWorker: getEnvBool("DISABLE_WORKER", true),
 
+		// === URL-адреса и порты микросервисов ===
 	    NotificationServiceURL: getEnvString("NOTIFICATION_SERVICE_URL", "http://notification-service:8005/event"),
 		NotificationServicePort: getEnvString("NOTIFICATION_SERVICE_PORT", ":8005"),
 	}
